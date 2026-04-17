@@ -58,7 +58,6 @@ Run the utility from the `build` directory:
 
 > [!WARNING]
 > The following commands are defined but currently **Not Implemented**:
-> - `read_ic`
 > - `write_ic`
 > - `verify_ic`
 > - `erase_ic`
