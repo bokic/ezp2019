@@ -1,4 +1,5 @@
 #include "ezp2019.h"
+#include "ezp2019_chips.h"
 
 #include <libusb-1.0/libusb.h>
 

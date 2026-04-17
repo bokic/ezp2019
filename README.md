@@ -69,7 +69,19 @@ Checking if the programmer is connected:
 ./build/ezp2019 is_connected
 ```
 
+## Development Tools
+
+### Chip Database Generator
+
+The project includes a Python script to convert the binary `ezp2019.dat` chip database into a C header file (`ezp2019_chips.h`). This is useful for updating the list of supported devices.
+
+**Usage:**
+```bash
+python3 ezp2019_gen_header.py ezp2019.dat -o ezp2019_chips.h
+```
+
 ## License
+
 
 This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
 
