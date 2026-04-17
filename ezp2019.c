@@ -34,6 +34,22 @@ static uint8_t connected_ic_command[EZP2019_PACKET_SIZE] = {
 };
 static_assert(sizeof(connected_ic_command) == EZP2019_PACKET_SIZE, "Illegal connected_ic_command[] size");
 
+static uint8_t read_ic_command_1[EZP2019_PACKET_SIZE] = {
+    0x00, 0x07, 0x00, 0x00, 0x01, 0x00, 0x03, 0xe8, 0x00, 0x01, 0x00, 0x00, 0x00, 0x68, 0x40, 0x10,
+    0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+static_assert(sizeof(read_ic_command_1) == EZP2019_PACKET_SIZE, "Illegal read_ic_command_1[] size");
+
+static uint8_t read_ic_command_2[EZP2019_PACKET_SIZE] = {
+    0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+static_assert(sizeof(read_ic_command_2) == EZP2019_PACKET_SIZE, "Illegal read_ic_command_2[] size");
+
 static int exp2019_command(void *handle, uint8_t command[EZP2019_PACKET_SIZE], uint8_t result[EZP2019_PACKET_SIZE])
 {
     int sent = 0;
@@ -183,22 +199,78 @@ exit:
     return ret;
 }
 
-int exp2019_read_ic(exp2019 handle, uint8_t *data, size_t size, volatile bool *abort) // TODO: Not implemented
+int exp2019_read_ic(exp2019 handle, uint8_t *data, size_t size, volatile bool *abort)
 {
-    int ret = EXP2019_NOT_IMPLEMENTED;
+    int ret = EXP2019_NO_ERROR;
+    libusb_device_handle *dev = NULL;
+    uint8_t tmp[EZP2019_PACKET_SIZE];
+    int recieved = 0;
+    int res = 0;
 
-    if (handle == NULL)
+    if (handle == NULL || data == NULL)
     {
         return EXP2019_INVALID_ARGUMENT;
     }
 
-    (void)handle;
-    (void)data;
-    (void)size;
-    (void)abort;
+    dev = libusb_open_device_with_vid_pid(handle, EZP2019_VID, EZP2019_PID);
+    if (!dev)
+    {
+        return EXP2019_NOT_CONNECTED;
+    }
 
-    // TODO: Not implemented!
+    res = libusb_claim_interface(dev, 0);
+    if (res)
+    {
+        ret = EXP2019_LIBUSB_ERROR;
+        goto exit;
+    }
 
+    // Step 1: Send first read trigger command
+    res = exp2019_command(dev, read_ic_command_1, tmp);
+    if (res)
+    {
+        ret = EXP2019_LIBUSB_ERROR;
+        goto release;
+    }
+
+    // Step 2: Send second read trigger command
+    res = exp2019_command(dev, read_ic_command_2, tmp);
+    if (res)
+    {
+        ret = EXP2019_LIBUSB_ERROR;
+        goto release;
+    }
+
+    // Step 3: Main data read loop (256 bytes per transfer)
+    for (size_t offset = 0; offset < size; offset += 256)
+    {
+        if (abort && *abort)
+        {
+            ret = EXP2019_COMMAND_ERROR; // Or a specific SHUTDOWN error
+            goto release;
+        }
+
+        size_t chunk = (size - offset) > 256 ? 256 : (size - offset);
+        res = libusb_bulk_transfer(dev, EP_IN, data + offset, (int)chunk, &recieved, 5000);
+        if (res)
+        {
+            ret = EXP2019_LIBUSB_ERROR;
+            goto release;
+        }
+    }
+
+    // Step 4: Finalize/Reset
+    res = exp2019_command(dev, reset_command, tmp);
+    if (res)
+    {
+        ret = EXP2019_LIBUSB_ERROR;
+        goto release;
+    }
+
+release:
+    libusb_release_interface(dev, 0);
+exit:
+    libusb_close(dev);
     return ret;
 }
 
