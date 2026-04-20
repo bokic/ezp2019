@@ -84,14 +84,6 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
 
-        uint32_t chip_size = exp2019_get_chip_size_by_id(chip_id);
-        uint8_t *data = malloc(chip_size);
-        if (!data)
-        {
-            fprintf(stderr, "Failed to allocate memory for reading IC\n");
-            return EXIT_FAILURE;
-        }
-
         fprintf(stderr, "Reading:\n");
         ret = exp2019_read_ic(handle, STDOUT_FILENO, progress_callback, NULL, &abort_flag);
         fprintf(stderr, "\n");
@@ -131,14 +123,6 @@ int main(int argc, char *argv[])
         if (ret != EXP2019_NO_ERROR)
         {
             fprintf(stderr, "Failed to get connected IC. Error: %s\n",  exp2019_error_string(ret));
-            return EXIT_FAILURE;
-        }
-
-        uint32_t chip_size = exp2019_get_chip_size_by_id(chip_id);
-        uint8_t *data = malloc(chip_size);
-        if (!data)
-        {
-            fprintf(stderr, "Failed to allocate memory for reading IC\n");
             return EXIT_FAILURE;
         }
 
