@@ -48,15 +48,19 @@ int main(int argc, char *argv[])
     }
     else if (strcmp(argv[1], "connected_ic") == 0)
     {
-        uint8_t data[EZP2019_PACKET_SIZE];
-        ret = exp2019_connected_ic(handle, data);
+        uint32_t chip_id = 0;
+        ret = exp2019_connected_ic(handle, &chip_id);
         if (ret)
         {
             fprintf(stderr, "Failed to get connected IC. Error: %s\n",  exp2019_error_string(ret));
             return EXIT_FAILURE;
         }
 
-        printf("Connected IC: %s\n", data);
+        const char *manufacturer = exp2019_get_manufacturer_by_id(chip_id);
+        const char *chip_name = exp2019_get_chip_name_by_id(chip_id);
+        const char *chip_type = exp2019_get_chip_type_by_id(chip_id);
+
+        printf("Chip Info: %s %s (%s)\n", manufacturer, chip_name, chip_type);
     }
     else if (strcmp(argv[1], "read_ic") == 0)
     {
@@ -110,8 +114,6 @@ int main(int argc, char *argv[])
     }
 
     exp2019_exit(handle);
-
-    printf("Success\n");
 
     return EXIT_SUCCESS;
 }

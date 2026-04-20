@@ -57,10 +57,16 @@ static int exp2019_command(void *handle, uint8_t command[EZP2019_PACKET_SIZE], u
     int recieved = 0;
 
     res = libusb_bulk_transfer(handle, EP_OUT, command, EZP2019_PACKET_SIZE, &sent, 5000);
-    if (res) return EXP2019_LIBUSB_ERROR;
+    if (res)
+    {
+        return EXP2019_LIBUSB_ERROR;
+    }
 
     res = libusb_bulk_transfer(handle, EP_IN, result, EZP2019_PACKET_SIZE, &recieved, 5000);
-    if (res) return EXP2019_LIBUSB_ERROR;
+    if (res)
+    {
+        return EXP2019_LIBUSB_ERROR;
+    }
 
     return 0;
 }
@@ -127,12 +133,13 @@ int exp2019_is_connected(exp2019 handle, bool *connected)
     return EXP2019_NO_ERROR;
 }
 
-int exp2019_connected_ic(exp2019 handle, uint8_t data[EZP2019_PACKET_SIZE]) // TODO: Should return enum of device ids
+int exp2019_connected_ic(exp2019 handle, uint32_t *chip_id)
 {
     int ret = EXP2019_NO_ERROR;
 
     struct libusb_device_handle *dev = NULL;
-    uint8_t tmp_data[256];
+    uint8_t tmp_data[256] = {0, };
+    uint8_t data[EZP2019_PACKET_SIZE];
     int res = 0;
 
     if (handle == NULL)
@@ -143,15 +150,16 @@ int exp2019_connected_ic(exp2019 handle, uint8_t data[EZP2019_PACKET_SIZE]) // T
     dev = libusb_open_device_with_vid_pid(handle, EZP2019_VID, EZP2019_PID);
     if (dev)
     {
+        libusb_set_auto_detach_kernel_driver(dev, 1);
         res = libusb_control_transfer(dev, LIBUSB_ENDPOINT_IN, LIBUSB_REQUEST_GET_DESCRIPTOR, (LIBUSB_DT_STRING << 8) | 0x01, US_ENGLISH, tmp_data, sizeof(tmp_data), 1000); // (www.zhifengsoft.com)
-        if (res)
+        if (res < 0)
         {
             ret = EXP2019_LIBUSB_ERROR;
             goto exit;
         }
 
         res = libusb_control_transfer(dev, LIBUSB_ENDPOINT_IN, LIBUSB_REQUEST_GET_DESCRIPTOR, (LIBUSB_DT_STRING << 8) | 0x02, US_ENGLISH, tmp_data, sizeof(tmp_data), 1000); // WinUSBComm
-        if (res)
+        if (res < 0)
         {
             ret = EXP2019_LIBUSB_ERROR;
             goto exit;
@@ -164,14 +172,19 @@ int exp2019_connected_ic(exp2019 handle, uint8_t data[EZP2019_PACKET_SIZE]) // T
             goto exit;
         }
 
-        res = exp2019_command(handle, connected_ic_command, data);
+        res = exp2019_command(dev, connected_ic_command, data);
         if (res)
         {
             ret = EXP2019_LIBUSB_ERROR;
             goto exit;
         }
 
-        res = exp2019_command(handle, reset_command, data);
+        if (chip_id)
+        {
+            *chip_id = (data[1] << 16) | (data[2] << 8) | data[3];
+        }
+
+        res = exp2019_command(dev, reset_command, data);
         if (res)
         {
             ret = EXP2019_LIBUSB_ERROR;
@@ -220,6 +233,11 @@ int exp2019_read_ic(exp2019 handle, uint8_t *data, size_t size, volatile bool *a
     }
 
     dev = libusb_open_device_with_vid_pid(handle, EZP2019_VID, EZP2019_PID);
+    if (dev)
+    {
+        libusb_set_auto_detach_kernel_driver(dev, 1);
+    }
+
     if (!dev)
     {
         if (errno == EACCES)
@@ -359,4 +377,56 @@ const char *exp2019_error_string(int error)
         case EXP2019_NOT_IMPLEMENTED: return "Not implemented";
         default: return "Unknown error";
     }
+}
+
+const void *exp2019_find_ic_by_id(uint32_t chip_id)
+{
+    for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
+    {
+        if (ezp2019_chips[i].chip_id == chip_id)
+        {
+            return &ezp2019_chips[i];
+        }
+    }
+
+    return NULL;
+}
+
+const char *exp2019_get_manufacturer_by_id(uint32_t chip_id)
+{
+    for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
+    {
+        if (ezp2019_chips[i].chip_id == chip_id)
+        {
+            return ezp2019_chips[i].manufacturer;
+        }
+    }
+
+    return NULL;
+}
+
+const char *exp2019_get_chip_name_by_id(uint32_t chip_id)
+{
+    for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
+    {
+        if (ezp2019_chips[i].chip_id == chip_id)
+        {
+            return ezp2019_chips[i].chip_name;
+        }
+    }
+
+    return NULL;
+}
+
+const char *exp2019_get_chip_type_by_id(uint32_t chip_id)
+{
+    for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
+    {
+        if (ezp2019_chips[i].chip_id == chip_id)
+        {
+            return ezp2019_chips[i].chip_type;
+        }
+    }
+
+    return NULL;
 }
