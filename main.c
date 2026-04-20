@@ -17,6 +17,16 @@ static void ctrl_c_handler(int signum)
     }
 }
 
+static void progress_callback(size_t processed, size_t total, void *context)
+{
+    (void)context;
+
+    size_t percentage = (processed * 100) / total;
+
+    fprintf(stderr, "\rProgress: %lu / %lu (%lu%%)", processed, total, percentage);
+    fflush(stderr);
+}
+
 int main(int argc, char *argv[])
 {
     signal(SIGINT, ctrl_c_handler);
@@ -81,12 +91,16 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
 
-        ret = exp2019_read_ic(handle, STDOUT_FILENO, &abort_flag);
+        fprintf(stderr, "Reading:\n");
+        ret = exp2019_read_ic(handle, STDOUT_FILENO, progress_callback, NULL, &abort_flag);
+        fprintf(stderr, "\n");
         if (ret != EXP2019_NO_ERROR)
         {
             fprintf(stderr, "Failed to read IC. Error: %s\n",  exp2019_error_string(ret));
             return EXIT_FAILURE;
         }
+
+        fprintf(stderr, "Reading done.\n");
     }
     else if (strcmp(argv[1], "write_ic") == 0)
     {

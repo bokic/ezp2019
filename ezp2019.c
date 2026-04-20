@@ -225,7 +225,7 @@ exit:
     return ret;
 }
 
-int exp2019_read_ic(exp2019 handle, int fd, volatile bool *abort)
+int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, volatile bool *abort)
 {
     int ret = EXP2019_NO_ERROR;
     libusb_device_handle *dev = NULL;
@@ -314,6 +314,11 @@ int exp2019_read_ic(exp2019 handle, int fd, volatile bool *abort)
         int readed = 0;
         size_t chunk = EZP2019_READ_SIZE;
 
+        if (callback)
+        {
+            callback(offset, size, context);
+        }
+
         res = libusb_bulk_transfer(dev, EP_IN, data, (int)chunk, &readed, 5000);
         if (res)
         {
@@ -363,7 +368,7 @@ exit:
     return ret;
 }
 
-int exp2019_write_ic(exp2019 handle, int fd, volatile bool *abort) // TODO: Not implemented
+int exp2019_write_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, volatile bool *abort) // TODO: Not implemented
 {
     int ret = EXP2019_NOT_IMPLEMENTED;
 
@@ -374,6 +379,8 @@ int exp2019_write_ic(exp2019 handle, int fd, volatile bool *abort) // TODO: Not 
 
     (void)handle;
     (void)fd;
+    (void)callback;
+    (void)context;
     (void)abort;
 
     // TODO: Not implemented!
@@ -381,7 +388,7 @@ int exp2019_write_ic(exp2019 handle, int fd, volatile bool *abort) // TODO: Not 
     return ret;
 }
 
-int exp2019_verify_ic(exp2019 handle, int fd, volatile bool *abort) // TODO: Not implemented
+int exp2019_verify_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, volatile bool *abort) // TODO: Not implemented
 {
     int ret = EXP2019_NOT_IMPLEMENTED;
 
@@ -392,6 +399,8 @@ int exp2019_verify_ic(exp2019 handle, int fd, volatile bool *abort) // TODO: Not
 
     (void)handle;
     (void)fd;
+    (void)callback;
+    (void)context;
     (void)abort;
 
     // TODO: Not implemented!
