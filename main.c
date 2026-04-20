@@ -1,10 +1,11 @@
 #include "ezp2019.h"
 
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
+#include <stdio.h>
+#include <ctype.h>
 
 
 static volatile bool abort_flag = false;
@@ -104,36 +105,74 @@ int main(int argc, char *argv[])
     }
     else if (strcmp(argv[1], "write_ic") == 0)
     {
-        /*uint8_t data[EZP2019_PACKET_SIZE];
-        ret = exp2019_write_ic(handle, data, sizeof(data), &abort_flag);
+        char confirm[10];
+        fprintf(stderr, "Writing will overwrite the IC data. Are you sure? [y/N]: ");
+        if (fgets(confirm, sizeof(confirm), stdin) == NULL || (tolower(confirm[0]) != 'y' && tolower(confirm[0]) != 'Y'))
+        {
+            fprintf(stderr, "Aborted.\n");
+            return EXIT_SUCCESS;
+        }
+
+        fprintf(stderr, "Writing:\n");
+        ret = exp2019_write_ic(handle, STDIN_FILENO, progress_callback, NULL, &abort_flag);
+        fprintf(stderr, "\n");
         if (ret)
         {
             fprintf(stderr, "Failed to write IC. Error: %s\n",  exp2019_error_string(ret));
             return EXIT_FAILURE;
         }
 
-        printf("Write IC: %s\n", data);*/
+        fprintf(stderr, "Writing done.\n");
     }
     else if (strcmp(argv[1], "verify_ic") == 0)
     {
-        /*uint8_t data[EZP2019_PACKET_SIZE];
-        ret = exp2019_verify_ic(handle, data, sizeof(data), &abort_flag);
+        uint32_t chip_id;
+        ret = exp2019_connected_ic(handle, &chip_id);
+        if (ret != EXP2019_NO_ERROR)
+        {
+            fprintf(stderr, "Failed to get connected IC. Error: %s\n",  exp2019_error_string(ret));
+            return EXIT_FAILURE;
+        }
+
+        uint32_t chip_size = exp2019_get_chip_size_by_id(chip_id);
+        uint8_t *data = malloc(chip_size);
+        if (!data)
+        {
+            fprintf(stderr, "Failed to allocate memory for reading IC\n");
+            return EXIT_FAILURE;
+        }
+
+        fprintf(stderr, "Verifying:\n");
+        ret = exp2019_verify_ic(handle, STDIN_FILENO, progress_callback, NULL, &abort_flag);
+        fprintf(stderr, "\n");
         if (ret)
         {
             fprintf(stderr, "Failed to verify IC. Error: %s\n",  exp2019_error_string(ret));
             return EXIT_FAILURE;
         }
 
-        printf("Verify IC: %s\n", data);*/
+        fprintf(stderr, "Verifying done.\n");
     }
     else if (strcmp(argv[1], "erase_ic") == 0)
     {
-        /*ret = exp2019_erase_ic(handle, &abort_flag);
+        char confirm[10];
+        fprintf(stderr, "Erasing will erase the entire IC. Are you sure? [y/N]: ");
+        if (fgets(confirm, sizeof(confirm), stdin) == NULL || (tolower(confirm[0]) != 'y' && tolower(confirm[0]) != 'Y'))
+        {
+            fprintf(stderr, "Aborted.\n");
+            return EXIT_SUCCESS;
+        }
+
+        fprintf(stderr, "Erasing:\n");
+        ret = exp2019_erase_ic(handle, &abort_flag);
+        fprintf(stderr, "\n");
         if (ret)
         {
             fprintf(stderr, "Failed to erase IC. Error: %s\n",  exp2019_error_string(ret));
             return EXIT_FAILURE;
-        }*/
+        }
+
+        fprintf(stderr, "Erasing done.\n");
     }
     else
     {
