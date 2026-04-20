@@ -28,7 +28,8 @@ add_library(ezp2019 SHARED
     ezp2019.h
     ${CMAKE_CURRENT_SOURCE_DIR}/ezp2019_chips.h
 )
-target_include_directories(ezp2019 PRIVATE ${LIBUSB_INCLUDE_DIRS})
+set_target_properties(ezp2019 PROPERTIES PUBLIC_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/ezp2019.h)
+target_include_directories(ezp2019 PUBLIC ${LIBUSB_INCLUDE_DIRS})
 target_link_libraries(ezp2019 PRIVATE ${LIBUSB_LIBRARIES})
 
 add_executable(ezp2019_cli 
