@@ -43,6 +43,23 @@ Use the provided `build.sh` script to configure and build the project:
 
 This will create a `build` directory containing the `ezp2019` executable and a `libezp2019.so` shared library.
 
+## USB Permissions (Linux)
+
+By default, most Linux distributions restrict access to USB devices for non-root users. To allow all users to access the EZP2019 programmer without `sudo`, you can install a udev rule:
+
+1. **Create the rule file:**
+   ```bash
+   sudo bash -c 'echo "SUBSYSTEM==\"usb\", ATTR{idVendor}==\"1fc8\", ATTR{idProduct}==\"310b\", MODE=\"0666\"" > /etc/udev/rules.d/99-ezp2019.rules'
+   ```
+
+2. **Reload and apply the rules:**
+   ```bash
+   sudo udevadm control --reload-rules && sudo udevadm trigger
+   ```
+
+3. **Replug the device:**
+   Unplug and replug your EZP2019 programmer for the changes to take effect.
+
 ## Usage
 
 Run the utility from the `build` directory:
