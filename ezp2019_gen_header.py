@@ -72,6 +72,15 @@ def generate_header(input_bin, output_header):
         f.write("#include <stdint.h>\n")
         f.write("#include <stddef.h>\n\n")
         
+        f.write("typedef enum {\n")
+        f.write("    CHIP_ID_UNKNOWN = 0,\n")
+        for c in chips_data:
+            # Create a safe enum name: Replace special chars with underscores
+            safe_name = c["name"].replace("-", "_").replace("(", "_").replace(")", "_").replace("@", "_").replace(".", "_").replace(" ", "_")
+            f.write(f"    CHIP_ID_{c['manuf']}_{safe_name},\n")
+        f.write("    CHIP_ID_COUNT\n")
+        f.write("} ChipID;\n\n")
+
         f.write("typedef struct {\n")
         f.write("    const char *chip_type;\n")
         f.write("    const char *manufacturer;\n")
@@ -89,7 +98,6 @@ def generate_header(input_bin, output_header):
         for row in rows:
             f.write("    { ")
             for i, val in enumerate(row):
-                # Final field doesn't need a space after it in the struct but we handle it via alignment
                 padding = " " * (col_widths[i] - len(val))
                 f.write(f"{val}{padding} ")
             f.write("},\n")
