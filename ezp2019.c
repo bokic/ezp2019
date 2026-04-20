@@ -327,8 +327,8 @@ int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *c
             goto release;
         }
 
-        ret = write(fd, data, (size_t)readed);
-        if (ret < 0)
+        res = write(fd, data, (size_t)readed);
+        if (res < 0)
         {
             ret = EXP2019_LIBUSB_ERROR;
             fprintf(stderr, "Error while writing IC to file descriptor: %s\n", strerror(errno));
