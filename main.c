@@ -34,7 +34,14 @@ int main(int argc, char *argv[])
 
     if (argc != 2)
     {
-        fprintf(stderr, "Usage: %s command\n", argv[0]);
+        fprintf(stderr, "Usage: %s <command>\n", argv[0]);
+        fprintf(stderr, "Commands:\n");
+        fprintf(stderr, "  is_connected  Check if the programmer is connected\n");
+        fprintf(stderr, "  connected_ic  Get information about the connected IC\n");
+        fprintf(stderr, "  read_ic       Read data from the IC to stdout\n");
+        fprintf(stderr, "  write_ic      Write data from stdin to the IC\n");
+        fprintf(stderr, "  verify_ic     Verify IC data against stdin\n");
+        fprintf(stderr, "  erase_ic      Erase the IC\n");
         return EXIT_FAILURE;
     }
 
@@ -161,6 +168,7 @@ int main(int argc, char *argv[])
     else
     {
         fprintf(stderr, "Unknown command: %s\n", argv[1]);
+        fprintf(stderr, "Run %s without arguments to see the list of commands.\n", argv[0]);
         return EXIT_FAILURE;
     }
 
