@@ -38,3 +38,6 @@ add_executable(ezp2019_cli
 )
 set_target_properties(ezp2019_cli PROPERTIES OUTPUT_NAME "ezp2019")
 target_link_libraries(ezp2019_cli PRIVATE ezp2019)
+
+install(TARGETS ezp2019_cli DESTINATION bin)
+install(TARGETS ezp2019 DESTINATION lib)
