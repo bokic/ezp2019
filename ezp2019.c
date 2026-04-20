@@ -186,7 +186,14 @@ int exp2019_connected_ic(exp2019 handle, uint8_t data[EZP2019_PACKET_SIZE]) // T
         }
 
     } else {
-        ret = EXP2019_NOT_CONNECTED;
+        if (errno == EACCES)
+        {
+            ret = EXP2019_LIBUSB_PERMISSION_DENIED;
+        }
+        else
+        {
+            ret = EXP2019_NOT_CONNECTED;
+        }
     }
 
 exit:
@@ -215,7 +222,16 @@ int exp2019_read_ic(exp2019 handle, uint8_t *data, size_t size, volatile bool *a
     dev = libusb_open_device_with_vid_pid(handle, EZP2019_VID, EZP2019_PID);
     if (!dev)
     {
-        return EXP2019_NOT_CONNECTED;
+        if (errno == EACCES)
+        {
+            ret = EXP2019_LIBUSB_PERMISSION_DENIED;
+        }
+        else
+        {
+            ret = EXP2019_NOT_CONNECTED;
+        }
+
+        goto exit;
     }
 
     res = libusb_claim_interface(dev, 0);
@@ -337,6 +353,7 @@ const char *exp2019_error_string(int error)
         case EXP2019_NO_ERROR: return "No error";
         case EXP2019_INVALID_ARGUMENT: return "Invalid argument";
         case EXP2019_NOT_CONNECTED: return "Not connected";
+        case EXP2019_LIBUSB_PERMISSION_DENIED: return "Permission denied";
         case EXP2019_LIBUSB_ERROR: return "Libusb error";
         case EXP2019_COMMAND_ERROR: return "Command error";
         case EXP2019_NOT_IMPLEMENTED: return "Not implemented";
