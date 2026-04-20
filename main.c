@@ -133,8 +133,10 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
 
+        bool is_matched = false;
+
         fprintf(stderr, "Verifying:\n");
-        ret = exp2019_verify_ic(handle, STDIN_FILENO, progress_callback, NULL, &abort_flag);
+        ret = exp2019_verify_ic(handle, STDIN_FILENO, progress_callback, NULL, &abort_flag, &is_matched);
         fprintf(stderr, "\n");
         if (ret)
         {
@@ -142,7 +144,14 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
 
-        fprintf(stderr, "Verifying done.\n");
+        if (is_matched)
+        {
+            printf("Data MATCHED!\n");
+        }
+        else
+        {
+            printf("Data DID NOT MATCH!\n");
+        }
     }
     else if (strcmp(argv[1], "erase_ic") == 0)
     {

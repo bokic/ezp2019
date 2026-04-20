@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <stdio.h>
 
+
 #define EZP2019_VID 0x1fc8
 #define EZP2019_PID 0x310b
 
@@ -24,7 +25,7 @@
 
 typedef libusb_context *exp2019;
 
-static uint8_t reset_command[EZP2019_PACKET_SIZE] = {
+static const uint8_t reset_command[EZP2019_PACKET_SIZE] = {
     0x01, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -32,7 +33,7 @@ static uint8_t reset_command[EZP2019_PACKET_SIZE] = {
 };
 static_assert(sizeof(reset_command) == EZP2019_PACKET_SIZE, "Illegal reset_command[] size");
 
-static uint8_t connected_ic_command[EZP2019_PACKET_SIZE] = {
+static const uint8_t connected_ic_command[EZP2019_PACKET_SIZE] = {
     0x00, 0x09, 0x00, 0x00, 0x01, 0x00, 0x03, 0xe8, 0x00, 0x80, 0x00, 0x00, 0x00, 0xef, 0x60, 0x17,
     0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -40,7 +41,7 @@ static uint8_t connected_ic_command[EZP2019_PACKET_SIZE] = {
 };
 static_assert(sizeof(connected_ic_command) == EZP2019_PACKET_SIZE, "Illegal connected_ic_command[] size");
 
-static uint8_t read_ic_command_1[EZP2019_PACKET_SIZE] = {
+static const uint8_t read_ic_command_1[EZP2019_PACKET_SIZE] = {
     0x00, 0x07, 0x00, 0x00, 0x01, 0x00, 0x03, 0xe8, 0x00, 0x01, 0x00, 0x00, 0x00, 0x68, 0x40, 0x10,
     0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -48,7 +49,7 @@ static uint8_t read_ic_command_1[EZP2019_PACKET_SIZE] = {
 };
 static_assert(sizeof(read_ic_command_1) == EZP2019_PACKET_SIZE, "Illegal read_ic_command_1[] size");
 
-static uint8_t read_ic_command_2[EZP2019_PACKET_SIZE] = {
+static const uint8_t read_ic_command_2[EZP2019_PACKET_SIZE] = {
     0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -56,13 +57,13 @@ static uint8_t read_ic_command_2[EZP2019_PACKET_SIZE] = {
 };
 static_assert(sizeof(read_ic_command_2) == EZP2019_PACKET_SIZE, "Illegal read_ic_command_2[] size");
 
-static int exp2019_command(void *handle, uint8_t command[EZP2019_PACKET_SIZE], uint8_t result[EZP2019_PACKET_SIZE])
+static int exp2019_command(void *handle, const uint8_t command[EZP2019_PACKET_SIZE], uint8_t result[EZP2019_PACKET_SIZE])
 {
     int sent = 0;
     int res = 0;
     int recieved = 0;
 
-    res = libusb_bulk_transfer(handle, EP_OUT, command, EZP2019_PACKET_SIZE, &sent, 5000);
+    res = libusb_bulk_transfer(handle, EP_OUT, (uint8_t *)command, EZP2019_PACKET_SIZE, &sent, 5000);
     if (res)
     {
         return EXP2019_LIBUSB_ERROR;
@@ -388,11 +389,11 @@ int exp2019_write_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *
     return ret;
 }
 
-int exp2019_verify_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, volatile bool *abort) // TODO: Not implemented
+int exp2019_verify_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, volatile bool *abort, bool *is_matched) // TODO: Not implemented
 {
     int ret = EXP2019_NOT_IMPLEMENTED;
 
-    if (handle == NULL)
+    if (handle == NULL || is_matched == NULL)
     {
         return EXP2019_INVALID_ARGUMENT;
     }
@@ -402,12 +403,12 @@ int exp2019_verify_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void 
     (void)callback;
     (void)context;
     (void)abort;
+    *is_matched = false;
 
     // TODO: Not implemented!
 
     return ret;
 }
-
 
 int exp2019_erase_ic(exp2019 handle, volatile bool *abort) // TODO: Not implemented
 {

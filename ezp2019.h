@@ -31,7 +31,7 @@ int exp2019_is_connected(exp2019 handle, bool *connected);
 int exp2019_connected_ic(exp2019 handle, uint32_t *chip_id);
 int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, volatile bool *abort);
 int exp2019_write_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, volatile bool *abort);
-int exp2019_verify_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, volatile bool *abort);
+int exp2019_verify_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, volatile bool *abort, bool *is_matched);
 int exp2019_erase_ic(exp2019 handle, volatile bool *abort);
 
 const char *exp2019_error_string(int error);
