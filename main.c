@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <signal.h>
+#include <unistd.h>
 
 
 static volatile bool abort_flag = false;
@@ -64,19 +65,32 @@ int main(int argc, char *argv[])
     }
     else if (strcmp(argv[1], "read_ic") == 0)
     {
-        uint8_t data[EZP2019_PACKET_SIZE];
-        ret = exp2019_read_ic(handle, data, sizeof(data), &abort_flag);
-        if (ret)
+        uint32_t chip_id;
+        ret = exp2019_connected_ic(handle, &chip_id);
+        if (ret != EXP2019_NO_ERROR)
+        {
+            fprintf(stderr, "Failed to get connected IC. Error: %s\n",  exp2019_error_string(ret));
+            return EXIT_FAILURE;
+        }
+
+        uint32_t chip_size = exp2019_get_chip_size_by_id(chip_id);
+        uint8_t *data = malloc(chip_size);
+        if (!data)
+        {
+            fprintf(stderr, "Failed to allocate memory for reading IC\n");
+            return EXIT_FAILURE;
+        }
+
+        ret = exp2019_read_ic(handle, STDOUT_FILENO, &abort_flag);
+        if (ret != EXP2019_NO_ERROR)
         {
             fprintf(stderr, "Failed to read IC. Error: %s\n",  exp2019_error_string(ret));
             return EXIT_FAILURE;
         }
-
-        printf("Read IC: %s\n", data);
     }
     else if (strcmp(argv[1], "write_ic") == 0)
     {
-        uint8_t data[EZP2019_PACKET_SIZE];
+        /*uint8_t data[EZP2019_PACKET_SIZE];
         ret = exp2019_write_ic(handle, data, sizeof(data), &abort_flag);
         if (ret)
         {
@@ -84,11 +98,11 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
 
-        printf("Write IC: %s\n", data);
+        printf("Write IC: %s\n", data);*/
     }
     else if (strcmp(argv[1], "verify_ic") == 0)
     {
-        uint8_t data[EZP2019_PACKET_SIZE];
+        /*uint8_t data[EZP2019_PACKET_SIZE];
         ret = exp2019_verify_ic(handle, data, sizeof(data), &abort_flag);
         if (ret)
         {
@@ -96,16 +110,16 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
 
-        printf("Verify IC: %s\n", data);
+        printf("Verify IC: %s\n", data);*/
     }
     else if (strcmp(argv[1], "erase_ic") == 0)
     {
-        ret = exp2019_erase_ic(handle, &abort_flag);
+        /*ret = exp2019_erase_ic(handle, &abort_flag);
         if (ret)
         {
             fprintf(stderr, "Failed to erase IC. Error: %s\n",  exp2019_error_string(ret));
             return EXIT_FAILURE;
-        }
+        }*/
     }
     else
     {

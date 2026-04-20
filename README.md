@@ -72,6 +72,7 @@ Run the utility from the `build` directory:
 
 - `is_connected`: Checks if the EZP2019 programmer is connected.
 - `connected_ic`: Retrieves ID/data from the connected IC.
+- `read_ic`: Reads the entire contents of the connected IC.
 
 > [!WARNING]
 > The following commands are defined but currently **Not Implemented**:
@@ -83,6 +84,29 @@ Run the utility from the `build` directory:
 Checking if the programmer is connected:
 ```bash
 ./build/ezp2019 is_connected
+```
+Checking connected IC info:
+```bash
+./build/ezp2019 connected_ic
+```
+Reading contents of the connected IC and saving to a file:
+```bash
+./build/ezp2019 read_ic > output.bin
+```
+
+> [!WARNING]
+> The following commands are currently **Not Implemented**:
+> Writing contents of a file to the connected IC:
+```bash
+./build/ezp2019 write_ic < input.bin
+```
+Verifying the contents of a file against the connected IC:
+```bash
+./build/ezp2019 verify_ic < input.bin
+```
+Erasing the connected IC:
+```bash
+./build/ezp2019 erase_ic
 ```
 
 ## Development Tools
