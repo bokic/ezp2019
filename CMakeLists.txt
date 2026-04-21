@@ -44,7 +44,7 @@ endif()
 # --- RPATH Settings ---
 # Set RPATH for the executable so it can find the library in ../lib relative to its path
 # We use \$ORIGIN to ensure it's treated as a literal by the linker
-set(CMAKE_INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}")
+set(CMAKE_INSTALL_RPATH "\$ORIGIN/../lib")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 set(CMAKE_SKIP_INSTALL_RPATH FALSE)
 set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
