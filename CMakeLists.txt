@@ -1,5 +1,34 @@
 cmake_minimum_required(VERSION 3.15)
-project(ezp2019 LANGUAGES C)
+# --- Version Detection ---
+find_package(Git QUIET)
+if(GIT_FOUND)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} describe --tags --always --dirty
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_VARIABLE GIT_VERSION
+        ERROR_QUIET
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+endif()
+
+if(NOT GIT_VERSION)
+    set(GIT_VERSION "0.0.0-unknown")
+endif()
+
+# Extract numeric part for CMake project() (e.g., 0.9.0 from 0.9.0-1-g...-dirty)
+string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+" PROJECT_NUMERIC_VERSION "${GIT_VERSION}")
+if(NOT PROJECT_NUMERIC_VERSION)
+    set(PROJECT_NUMERIC_VERSION "0.0.0")
+endif()
+
+project(ezp2019 
+    VERSION ${PROJECT_NUMERIC_VERSION}
+    LANGUAGES C
+)
+
+set(EZP2019_FULL_VERSION ${GIT_VERSION})
+
+add_definitions(-DEZP2019_VERSION="${EZP2019_FULL_VERSION}")
 
 # --- Standard Settings ---
 set(CMAKE_C_STANDARD 23)
@@ -51,8 +80,8 @@ add_library(ezp2019 SHARED
 )
 
 set_target_properties(ezp2019 PROPERTIES
-    VERSION 1.0.0
-    SOVERSION 1
+    VERSION ${PROJECT_VERSION}
+    SOVERSION ${PROJECT_VERSION_MAJOR}
     PUBLIC_HEADER ezp2019.h
 )
 
