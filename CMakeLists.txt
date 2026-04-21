@@ -114,3 +114,30 @@ configure_file(ezp2019.pc.in ezp2019.pc @ONLY)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/ezp2019.pc"
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
 )
+
+# --- CMake Export ---
+include(CMakePackageConfigHelpers)
+
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/ezp2019ConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/ezp2019Config.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/ezp2019Config.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/ezp2019
+)
+
+install(EXPORT ezp2019Targets
+    FILE ezp2019Targets.cmake
+    NAMESPACE ezp2019::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/ezp2019
+)
+
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/ezp2019Config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/ezp2019ConfigVersion.cmake"
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/ezp2019
+)
