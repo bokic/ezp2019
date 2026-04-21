@@ -1,0 +1,11 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: ezp2019
+Description: Library for EZP2019 USB high speed programmer
+Version: @PROJECT_VERSION@
+Requires.private: libusb-1.0
+Libs: -L${libdir} -lezp2019
+Cflags: -I${includedir}
