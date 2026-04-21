@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
         }
 
         fprintf(stderr, "Erasing:\n");
-        ret = exp2019_erase_ic(handle, &abort_flag);
+        ret = exp2019_erase_ic(handle);
         fprintf(stderr, "\n");
         if (ret)
         {

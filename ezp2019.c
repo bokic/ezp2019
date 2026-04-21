@@ -25,52 +25,65 @@
 
 typedef libusb_context *exp2019;
 
-static const uint8_t reset_command[EZP2019_PACKET_SIZE] = {
-    0x01, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-};
-static_assert(sizeof(reset_command) == EZP2019_PACKET_SIZE, "Illegal reset_command[] size");
+typedef enum {
+    CMD_ERASE   = 0x04,
+    CMD_READ_EE = 0x05,
+    CMD_READ_SPI= 0x07,
+    CMD_RESET   = 0x08,
+    CMD_CONNECT = 0x09,
+    CMD_WRITE   = 0x0B,
+    CMD_VERIFY  = 0x0C
+} ezp2019_cmd_t;
 
-static const uint8_t connected_ic_command[EZP2019_PACKET_SIZE] = {
-    0x00, 0x09, 0x00, 0x00, 0x01, 0x00, 0x03, 0xe8, 0x00, 0x80, 0x00, 0x00, 0x00, 0xef, 0x60, 0x17,
-    0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-};
-static_assert(sizeof(connected_ic_command) == EZP2019_PACKET_SIZE, "Illegal connected_ic_command[] size");
+static void prepare_command_packet(uint8_t packet[EZP2019_PACKET_SIZE], uint8_t command_id, const Chip *chip)
+{
+    memset(packet, 0, EZP2019_PACKET_SIZE);
+    packet[1] = command_id;
+    
+    if (chip)
+    {
+        // Parameter 1: Page Size (Big Endian)
+        packet[4] = (chip->pagesize >> 8) & 0xFF;
+        packet[5] = chip->pagesize & 0xFF;
+        
+        // Parameter 2: Timing (Big Endian)
+        packet[6] = (chip->timing >> 8) & 0xFF;
+        packet[7] = chip->timing & 0xFF;
+        
+        // Capacity / Size (Big Endian)
+        packet[8] = (chip->size >> 24) & 0xFF;
+        packet[9] = (chip->size >> 16) & 0xFF;
+        packet[10] = (chip->size >> 8) & 0xFF;
+        packet[11] = chip->size & 0xFF;
+        
+        // Chip ID (Big Endian)
+        packet[12] = (chip->chip_id >> 24) & 0xFF;
+        packet[13] = (chip->chip_id >> 16) & 0xFF;
+        packet[14] = (chip->chip_id >> 8) & 0xFF;
+        packet[15] = chip->chip_id & 0xFF;
+        
+        // Flags (Little Endian)
+        packet[16] = chip->flags & 0xFF;
+        packet[17] = (chip->flags >> 8) & 0xFF;
+        packet[18] = (chip->flags >> 16) & 0xFF;
+        packet[19] = (chip->flags >> 24) & 0xFF;
+    }
+}
 
-static const uint8_t read_ic_command_1[EZP2019_PACKET_SIZE] = {
-    0x00, 0x07, 0x00, 0x00, 0x01, 0x00, 0x03, 0xe8, 0x00, 0x01, 0x00, 0x00, 0x00, 0x68, 0x40, 0x10,
-    0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-};
-static_assert(sizeof(read_ic_command_1) == EZP2019_PACKET_SIZE, "Illegal read_ic_command_1[] size");
-
-static const uint8_t read_ic_command_2[EZP2019_PACKET_SIZE] = {
-    0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-};
-static_assert(sizeof(read_ic_command_2) == EZP2019_PACKET_SIZE, "Illegal read_ic_command_2[] size");
-
-static int exp2019_command(void *handle, const uint8_t command[EZP2019_PACKET_SIZE], uint8_t result[EZP2019_PACKET_SIZE])
+static int exp2019_send_command(void *handle, const uint8_t command[EZP2019_PACKET_SIZE], uint8_t result[EZP2019_PACKET_SIZE])
 {
     int sent = 0;
     int res = 0;
-    int recieved = 0;
+    int received = 0;
 
     res = libusb_bulk_transfer(handle, EP_OUT, (uint8_t *)command, EZP2019_PACKET_SIZE, &sent, 5000);
-    if (res)
+    if (res || sent != EZP2019_PACKET_SIZE)
     {
         return EXP2019_LIBUSB_ERROR;
     }
 
-    res = libusb_bulk_transfer(handle, EP_IN, result, EZP2019_PACKET_SIZE, &recieved, 5000);
-    if (res)
+    res = libusb_bulk_transfer(handle, EP_IN, result, EZP2019_PACKET_SIZE, &received, 5000);
+    if (res || received != EZP2019_PACKET_SIZE)
     {
         return EXP2019_LIBUSB_ERROR;
     }
@@ -179,7 +192,10 @@ int exp2019_connected_ic(exp2019 handle, uint32_t *chip_id)
             goto exit;
         }
 
-        res = exp2019_command(dev, connected_ic_command, data);
+        uint8_t cmd_packet[EZP2019_PACKET_SIZE];
+        prepare_command_packet(cmd_packet, CMD_CONNECT, NULL);
+
+        res = exp2019_send_command(dev, cmd_packet, data);
         if (res)
         {
             ret = EXP2019_LIBUSB_ERROR;
@@ -191,7 +207,10 @@ int exp2019_connected_ic(exp2019 handle, uint32_t *chip_id)
             *chip_id = (data[1] << 16) | (data[2] << 8) | data[3];
         }
 
-        res = exp2019_command(dev, reset_command, data);
+        prepare_command_packet(cmd_packet, CMD_RESET, NULL);
+        cmd_packet[0] = 0x01; // Special case for Reset
+
+        res = exp2019_send_command(dev, cmd_packet, data);
         if (res)
         {
             ret = EXP2019_LIBUSB_ERROR;
@@ -226,6 +245,64 @@ exit:
     return ret;
 }
 
+int exp2019_reset_ic(exp2019 handle)
+{
+    int ret = EXP2019_NO_ERROR;
+    libusb_device_handle *dev = NULL;
+    uint8_t tmp[EZP2019_PACKET_SIZE];
+    int res = 0;
+
+    if (handle == NULL)
+    {
+        return EXP2019_INVALID_ARGUMENT;
+    }
+
+    dev = libusb_open_device_with_vid_pid(handle, EZP2019_VID, EZP2019_PID);
+    if (!dev)
+    {
+        ret = (errno == EACCES) ? EXP2019_LIBUSB_PERMISSION_DENIED : EXP2019_NOT_CONNECTED;
+        goto exit;
+    }
+    libusb_set_auto_detach_kernel_driver(dev, 1);
+
+    res = libusb_claim_interface(dev, 0);
+    if (res)
+    {
+        ret = EXP2019_LIBUSB_ERROR;
+        fprintf(stderr, "Error while claiming interface: %s\n", libusb_strerror(res));
+        goto exit;
+    }
+
+    uint8_t cmd_packet[EZP2019_PACKET_SIZE];
+    prepare_command_packet(cmd_packet, CMD_RESET, NULL);
+    cmd_packet[0] = 0x01; // Special case for Reset
+
+    res = exp2019_send_command(dev, cmd_packet, tmp);
+    if (res)
+    {
+        ret = EXP2019_LIBUSB_ERROR;
+        fprintf(stderr, "Error while sending reset command: %s\n", libusb_strerror(res));
+        goto exit;
+    }
+
+    res = libusb_release_interface(dev, 0);
+    if (res)
+    {
+        ret = EXP2019_LIBUSB_ERROR;
+        fprintf(stderr, "Error while releasing interface: %s\n", libusb_strerror(res));
+        goto exit;
+    }
+
+exit:
+    if (dev)
+    {
+        libusb_close(dev);
+        dev = NULL;
+    }
+
+    return ret;
+}
+
 int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, volatile bool *abort)
 {
     int ret = EXP2019_NO_ERROR;
@@ -240,41 +317,32 @@ int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *c
     }
 
 
+    // Step 1: Handshake and chip lookup
     res = exp2019_connected_ic(handle, &chip_id);
     if (res)
     {
         ret = EXP2019_LIBUSB_ERROR;
         fprintf(stderr, "Error while getting connected IC: %s\n", libusb_strerror(res));
-        goto release;
-    }
-
-    size_t size = exp2019_get_chip_size_by_id(chip_id);
-    if (size == 0)
-    {
-        ret = EXP2019_LIBUSB_ERROR;
-        fprintf(stderr, "Error while getting chip size: %s\n", libusb_strerror(res));
-        goto release;
-    }
-
-    dev = libusb_open_device_with_vid_pid(handle, EZP2019_VID, EZP2019_PID);
-    if (dev)
-    {
-        libusb_set_auto_detach_kernel_driver(dev, 1);
-    }
-
-    if (!dev)
-    {
-        if (errno == EACCES)
-        {
-            ret = EXP2019_LIBUSB_PERMISSION_DENIED;
-        }
-        else
-        {
-            ret = EXP2019_NOT_CONNECTED;
-        }
-
         goto exit;
     }
+
+    const Chip *chip = (const Chip *)exp2019_find_ic_by_id(chip_id);
+    if (!chip)
+    {
+        ret = EXP2019_COMMAND_ERROR;
+        fprintf(stderr, "Unknown chip ID: 0x%08X\n", chip_id);
+        goto exit;
+    }
+
+    size_t size = chip->size;
+
+    dev = libusb_open_device_with_vid_pid(handle, EZP2019_VID, EZP2019_PID);
+    if (!dev)
+    {
+        ret = (errno == EACCES) ? EXP2019_LIBUSB_PERMISSION_DENIED : EXP2019_NOT_CONNECTED;
+        goto exit;
+    }
+    libusb_set_auto_detach_kernel_driver(dev, 1);
 
     res = libusb_claim_interface(dev, 0);
     if (res)
@@ -284,21 +352,21 @@ int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *c
         goto exit;
     }
 
-    // Step 1: Send first read trigger command
-    res = exp2019_command(dev, read_ic_command_1, tmp);
+    // Step 2: Prepare and send read command
+    uint8_t cmd_id = CMD_READ_SPI; 
+    if (chip->chip_type && (strcmp(chip->chip_type, "24_EEPROM") == 0 || strcmp(chip->chip_type, "93_EEPROM") == 0))
+    {
+        cmd_id = CMD_READ_EE;
+    }
+
+    uint8_t cmd_packet[EZP2019_PACKET_SIZE];
+    prepare_command_packet(cmd_packet, cmd_id, chip);
+
+    res = exp2019_send_command(dev, cmd_packet, tmp);
     if (res)
     {
         ret = EXP2019_LIBUSB_ERROR;
         fprintf(stderr, "Error while sending read trigger command: %s\n", libusb_strerror(res));
-        goto release;
-    }
-
-    // Step 2: Send second read trigger command
-    res = exp2019_command(dev, read_ic_command_2, tmp);
-    if (res)
-    {
-        ret = EXP2019_LIBUSB_ERROR;
-        fprintf(stderr, "Error while sending second read trigger command: %s\n", libusb_strerror(res));
         goto release;
     }
 
@@ -345,7 +413,9 @@ int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *c
     }
 
     // Step 4: Finalize/Reset
-    res = exp2019_command(dev, reset_command, tmp);
+    prepare_command_packet(cmd_packet, CMD_RESET, NULL);
+    cmd_packet[0] = 0x01; // Special case for Reset
+    res = exp2019_send_command(dev, cmd_packet, tmp);
     if (res)
     {
         ret = EXP2019_LIBUSB_ERROR;
@@ -369,61 +439,160 @@ exit:
     return ret;
 }
 
-int exp2019_write_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, volatile bool *abort) // TODO: Not implemented
+int exp2019_write_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, volatile bool *abort)
 {
-    int ret = EXP2019_NOT_IMPLEMENTED;
+    int ret = EXP2019_NO_ERROR;
+    libusb_device_handle *dev = NULL;
+    uint8_t tmp[EZP2019_PACKET_SIZE];
+    uint32_t chip_id = 0;
+    int res = 0;
 
-    if (handle == NULL)
+    if (handle == NULL || fd < 0) return EXP2019_INVALID_ARGUMENT;
+
+    res = exp2019_connected_ic(handle, &chip_id);
+    if (res) return EXP2019_LIBUSB_ERROR;
+
+    const Chip *chip = (const Chip *)exp2019_find_ic_by_id(chip_id);
+    if (!chip) return EXP2019_COMMAND_ERROR;
+
+    size_t size = chip->size;
+
+    dev = libusb_open_device_with_vid_pid(handle, EZP2019_VID, EZP2019_PID);
+    if (!dev) return (errno == EACCES) ? EXP2019_LIBUSB_PERMISSION_DENIED : EXP2019_NOT_CONNECTED;
+    libusb_set_auto_detach_kernel_driver(dev, 1);
+
+    res = libusb_claim_interface(dev, 0);
+    if (res) { ret = EXP2019_LIBUSB_ERROR; goto exit; }
+
+    uint8_t cmd_packet[EZP2019_PACKET_SIZE];
+    prepare_command_packet(cmd_packet, CMD_WRITE, chip);
+
+    res = exp2019_send_command(dev, cmd_packet, tmp);
+    if (res) { ret = EXP2019_LIBUSB_ERROR; goto release; }
+
+    // Data write loop...
+    for (size_t offset = 0; offset < size; offset += EZP2019_READ_SIZE)
     {
-        return EXP2019_INVALID_ARGUMENT;
+        if (abort && *abort) { ret = EXP2019_ABORTED; goto release; }
+        uint8_t data[EZP2019_READ_SIZE];
+        ssize_t n = read(fd, data, EZP2019_READ_SIZE);
+        if (n <= 0) break;
+        
+        int written = 0;
+        res = libusb_bulk_transfer(dev, EP_OUT, data, (int)n, &written, 5000);
+        if (res) { ret = EXP2019_LIBUSB_ERROR; goto release; }
+        if (callback) callback(offset + written, size, context);
     }
 
-    (void)handle;
-    (void)fd;
-    (void)callback;
-    (void)context;
-    (void)abort;
-
-    // TODO: Not implemented!
-
+release:
+    libusb_release_interface(dev, 0);
+exit:
+    libusb_close(dev);
     return ret;
 }
 
-int exp2019_verify_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, volatile bool *abort, bool *is_matched) // TODO: Not implemented
+int exp2019_verify_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, volatile bool *abort, bool *is_matched)
 {
-    int ret = EXP2019_NOT_IMPLEMENTED;
+    int ret = EXP2019_NO_ERROR;
+    libusb_device_handle *dev = NULL;
+    uint8_t tmp[EZP2019_PACKET_SIZE];
+    uint32_t chip_id = 0;
+    int res = 0;
 
-    if (handle == NULL || is_matched == NULL)
+    if (handle == NULL || fd < 0 || is_matched == NULL) return EXP2019_INVALID_ARGUMENT;
+
+    *is_matched = true;
+
+    res = exp2019_connected_ic(handle, &chip_id);
+    if (res) return EXP2019_LIBUSB_ERROR;
+
+    const Chip *chip = (const Chip *)exp2019_find_ic_by_id(chip_id);
+    if (!chip) return EXP2019_COMMAND_ERROR;
+
+    size_t size = chip->size;
+
+    dev = libusb_open_device_with_vid_pid(handle, EZP2019_VID, EZP2019_PID);
+    if (!dev) return (errno == EACCES) ? EXP2019_LIBUSB_PERMISSION_DENIED : EXP2019_NOT_CONNECTED;
+    libusb_set_auto_detach_kernel_driver(dev, 1);
+
+    res = libusb_claim_interface(dev, 0);
+    if (res) { ret = EXP2019_LIBUSB_ERROR; goto exit; }
+
+    uint8_t cmd_packet[EZP2019_PACKET_SIZE];
+    prepare_command_packet(cmd_packet, CMD_VERIFY, chip);
+
+    res = exp2019_send_command(dev, cmd_packet, tmp);
+    if (res) { ret = EXP2019_LIBUSB_ERROR; goto release; }
+
+    // Data verification loop
+    for (size_t offset = 0; offset < size; offset += EZP2019_READ_SIZE)
     {
-        return EXP2019_INVALID_ARGUMENT;
+        if (abort && *abort) { ret = EXP2019_ABORTED; goto release; }
+        
+        uint8_t ic_data[EZP2019_READ_SIZE];
+        uint8_t file_data[EZP2019_READ_SIZE];
+        int readed = 0;
+        
+        // Read from IC
+        res = libusb_bulk_transfer(dev, EP_IN, ic_data, EZP2019_READ_SIZE, &readed, 5000);
+        if (res || readed != EZP2019_READ_SIZE) { ret = EXP2019_LIBUSB_ERROR; goto release; }
+        
+        // Read from file
+        ssize_t n = read(fd, file_data, EZP2019_READ_SIZE);
+        if (n < (ssize_t)EZP2019_READ_SIZE)
+        {
+            // If file is shorter, treat remaining as mismatched (or handle differently)
+            memset(file_data + (n > 0 ? n : 0), 0xFF, EZP2019_READ_SIZE - (n > 0 ? n : 0));
+        }
+
+        if (memcmp(ic_data, file_data, EZP2019_READ_SIZE) != 0)
+        {
+            *is_matched = false;
+        }
+
+        if (callback) callback(offset + readed, size, context);
     }
 
-    (void)handle;
-    (void)fd;
-    (void)callback;
-    (void)context;
-    (void)abort;
-    *is_matched = false;
-
-    // TODO: Not implemented!
-
+release:
+    libusb_release_interface(dev, 0);
+exit:
+    libusb_close(dev);
     return ret;
 }
 
-int exp2019_erase_ic(exp2019 handle, volatile bool *abort) // TODO: Not implemented
+int exp2019_erase_ic(exp2019 handle)
 {
-    int ret = EXP2019_NOT_IMPLEMENTED;
+    int ret = EXP2019_NO_ERROR;
+    libusb_device_handle *dev = NULL;
+    uint8_t tmp[EZP2019_PACKET_SIZE];
+    uint32_t chip_id = 0;
+    int res = 0;
 
-    if (handle == NULL)
-    {
-        return EXP2019_INVALID_ARGUMENT;
-    }
+    if (handle == NULL) return EXP2019_INVALID_ARGUMENT;
 
-    (void)handle;
-    (void)abort;
+    res = exp2019_connected_ic(handle, &chip_id);
+    if (res) return EXP2019_LIBUSB_ERROR;
 
-    // TODO: Not implemented!
+    const Chip *chip = (const Chip *)exp2019_find_ic_by_id(chip_id);
+    if (!chip) return EXP2019_COMMAND_ERROR;
 
+    dev = libusb_open_device_with_vid_pid(handle, EZP2019_VID, EZP2019_PID);
+    if (!dev) return (errno == EACCES) ? EXP2019_LIBUSB_PERMISSION_DENIED : EXP2019_NOT_CONNECTED;
+    libusb_set_auto_detach_kernel_driver(dev, 1);
+
+    res = libusb_claim_interface(dev, 0);
+    if (res) { ret = EXP2019_LIBUSB_ERROR; goto exit; }
+
+    uint8_t cmd_packet[EZP2019_PACKET_SIZE];
+    prepare_command_packet(cmd_packet, CMD_ERASE, chip);
+
+    res = exp2019_send_command(dev, cmd_packet, tmp);
+    if (res) { ret = EXP2019_LIBUSB_ERROR; goto release; }
+
+release:
+    libusb_release_interface(dev, 0);
+exit:
+    libusb_close(dev);
     return ret;
 }
 
