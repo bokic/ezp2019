@@ -612,6 +612,17 @@ EZP2019_API const char *exp2019_error_string(int error)
     }
 }
 
+EZP2019_API size_t exp2019_get_num_chips(void)
+{
+    return ezp2019_num_chips;
+}
+
+EZP2019_API uint32_t exp2019_get_ic_id(size_t index)
+{
+    if (index >= ezp2019_num_chips) return UINT32_MAX;
+    return ezp2019_chips[index].chip_id;
+}
+
 EZP2019_API const void *exp2019_find_ic_by_id(uint32_t chip_id)
 {
     for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)

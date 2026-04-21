@@ -50,6 +50,8 @@ EZP2019_API int exp2019_verify_ic(exp2019 handle, int fd, ezp2019_callback_t cal
 EZP2019_API int exp2019_erase_ic(exp2019 handle);
 
 EZP2019_API const char *exp2019_error_string(int error);
+EZP2019_API size_t      exp2019_get_num_chips(void);
+EZP2019_API uint32_t    exp2019_get_ic_id(size_t index);
 EZP2019_API const void *exp2019_find_ic_by_id(uint32_t chip_id);
 EZP2019_API const char *exp2019_get_manufacturer_by_id(uint32_t chip_id);
 EZP2019_API const char *exp2019_get_chip_name_by_id(uint32_t chip_id);
