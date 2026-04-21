@@ -41,6 +41,14 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Choose the type of build." FORCE)
 endif()
 
+# --- RPATH Settings ---
+# Set RPATH for the executable so it can find the library in ../lib relative to its path
+# We use \$ORIGIN to ensure it's treated as a literal by the linker
+set(CMAKE_INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}")
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set(CMAKE_SKIP_INSTALL_RPATH FALSE)
+set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+
 # --- Dependencies ---
 include(GNUInstallDirs)
 find_package(PkgConfig REQUIRED)
