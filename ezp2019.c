@@ -25,15 +25,6 @@
 
 typedef libusb_context *exp2019;
 
-typedef enum {
-    CMD_ERASE   = 0x04,
-    CMD_READ_EE = 0x05,
-    CMD_READ_SPI= 0x07,
-    CMD_RESET   = 0x08,
-    CMD_CONNECT = 0x09,
-    CMD_WRITE   = 0x0B,
-    CMD_VERIFY  = 0x0C
-} ezp2019_cmd_t;
 
 static void prepare_command_packet(uint8_t packet[EZP2019_PACKET_SIZE], uint8_t command_id, const Chip *chip)
 {
@@ -193,7 +184,7 @@ EZP2019_API int exp2019_connected_ic(exp2019 handle, uint32_t *chip_id)
         }
 
         uint8_t cmd_packet[EZP2019_PACKET_SIZE];
-        prepare_command_packet(cmd_packet, CMD_CONNECT, NULL);
+        prepare_command_packet(cmd_packet, EZP_CMD_CONNECT, NULL);
 
         res = exp2019_send_command(dev, cmd_packet, data);
         if (res)
@@ -207,7 +198,7 @@ EZP2019_API int exp2019_connected_ic(exp2019 handle, uint32_t *chip_id)
             *chip_id = (data[1] << 16) | (data[2] << 8) | data[3];
         }
 
-        prepare_command_packet(cmd_packet, CMD_RESET, NULL);
+        prepare_command_packet(cmd_packet, EZP_CMD_RESET, NULL);
         cmd_packet[0] = 0x01; // Special case for Reset
 
         res = exp2019_send_command(dev, cmd_packet, data);
@@ -274,7 +265,7 @@ EZP2019_API int exp2019_reset_ic(exp2019 handle)
     }
 
     uint8_t cmd_packet[EZP2019_PACKET_SIZE];
-    prepare_command_packet(cmd_packet, CMD_RESET, NULL);
+    prepare_command_packet(cmd_packet, EZP_CMD_RESET, NULL);
     cmd_packet[0] = 0x01; // Special case for Reset
 
     res = exp2019_send_command(dev, cmd_packet, tmp);
@@ -353,10 +344,10 @@ EZP2019_API int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callb
     }
 
     // Step 2: Prepare and send read command
-    uint8_t cmd_id = CMD_READ_SPI; 
+    uint8_t cmd_id = EZP_CMD_READ_SPI; 
     if (chip->chip_type && (strcmp(chip->chip_type, "24_EEPROM") == 0 || strcmp(chip->chip_type, "93_EEPROM") == 0))
     {
-        cmd_id = CMD_READ_EE;
+        cmd_id = EZP_CMD_READ_EE;
     }
 
     uint8_t cmd_packet[EZP2019_PACKET_SIZE];
@@ -413,7 +404,7 @@ EZP2019_API int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callb
     }
 
     // Step 4: Finalize/Reset
-    prepare_command_packet(cmd_packet, CMD_RESET, NULL);
+    prepare_command_packet(cmd_packet, EZP_CMD_RESET, NULL);
     cmd_packet[0] = 0x01; // Special case for Reset
     res = exp2019_send_command(dev, cmd_packet, tmp);
     if (res)
@@ -465,7 +456,7 @@ EZP2019_API int exp2019_write_ic(exp2019 handle, int fd, ezp2019_callback_t call
     if (res) { ret = EXP2019_LIBUSB_ERROR; goto exit; }
 
     uint8_t cmd_packet[EZP2019_PACKET_SIZE];
-    prepare_command_packet(cmd_packet, CMD_WRITE, chip);
+    prepare_command_packet(cmd_packet, EZP_CMD_WRITE, chip);
 
     res = exp2019_send_command(dev, cmd_packet, tmp);
     if (res) { ret = EXP2019_LIBUSB_ERROR; goto release; }
@@ -519,7 +510,7 @@ EZP2019_API int exp2019_verify_ic(exp2019 handle, int fd, ezp2019_callback_t cal
     if (res) { ret = EXP2019_LIBUSB_ERROR; goto exit; }
 
     uint8_t cmd_packet[EZP2019_PACKET_SIZE];
-    prepare_command_packet(cmd_packet, CMD_VERIFY, chip);
+    prepare_command_packet(cmd_packet, EZP_CMD_VERIFY, chip);
 
     res = exp2019_send_command(dev, cmd_packet, tmp);
     if (res) { ret = EXP2019_LIBUSB_ERROR; goto release; }
@@ -584,7 +575,7 @@ EZP2019_API int exp2019_erase_ic(exp2019 handle)
     if (res) { ret = EXP2019_LIBUSB_ERROR; goto exit; }
 
     uint8_t cmd_packet[EZP2019_PACKET_SIZE];
-    prepare_command_packet(cmd_packet, CMD_ERASE, chip);
+    prepare_command_packet(cmd_packet, EZP_CMD_ERASE, chip);
 
     res = exp2019_send_command(dev, cmd_packet, tmp);
     if (res) { ret = EXP2019_LIBUSB_ERROR; goto release; }
