@@ -105,7 +105,7 @@ static int exp2019_wait_ready(void *handle, const Chip *chip)
         res = exp2019_send_command(handle, cmd_packet, result);
         if (res == 0)
         {
-            if ((result[4] & 0x01) == 0)
+            if ((result[0] & 0x01) == 0)
             {
                 return 0; // ready!
             }
