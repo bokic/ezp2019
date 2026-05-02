@@ -33,11 +33,15 @@ static void prepare_command_packet(uint8_t packet[EZP2019_PACKET_SIZE], uint8_t 
     
     if (chip)
     {
-        // Parameter 1: Page Size (Big Endian)
-        packet[4] = (chip->pagesize >> 8) & 0xFF;
-        packet[5] = chip->pagesize & 0xFF;
+        // Protocol Enum and Config Flags
+        packet[2] = chip->protocol_enum_cfg & 0xFF;
+        packet[3] = (chip->protocol_enum_cfg >> 8) & 0xFF;
+
+        // Protocol Variant (Big Endian)
+        packet[4] = (chip->protocol_variant >> 8) & 0xFF;
+        packet[5] = chip->protocol_variant & 0xFF;
         
-        // Parameter 2: Timing (Big Endian)
+        // Timing (Big Endian)
         packet[6] = (chip->timing >> 8) & 0xFF;
         packet[7] = chip->timing & 0xFF;
         
@@ -53,11 +57,14 @@ static void prepare_command_packet(uint8_t packet[EZP2019_PACKET_SIZE], uint8_t 
         packet[14] = (chip->chip_id >> 8) & 0xFF;
         packet[15] = chip->chip_id & 0xFF;
         
-        // Flags (Little Endian)
+        // Flags / Operation mask (Little Endian)
         packet[16] = chip->flags & 0xFF;
         packet[17] = (chip->flags >> 8) & 0xFF;
         packet[18] = (chip->flags >> 16) & 0xFF;
         packet[19] = (chip->flags >> 24) & 0xFF;
+
+        // Operation flags (Voltage & UI Sync bits)
+        packet[28] = (chip->flags >> 24) & 0xFF;
     }
 }
 
@@ -81,6 +88,34 @@ static int exp2019_send_command(void *handle, const uint8_t command[EZP2019_PACK
 
     return 0;
 }
+
+static int exp2019_wait_ready(void *handle, const Chip *chip)
+{
+    uint8_t cmd_packet[EZP2019_PACKET_SIZE];
+    uint8_t result[EZP2019_PACKET_SIZE];
+    int res = 0;
+    
+    // Exactly matches original disassembly: uses pagesize as retry limit
+    int retries = chip->pagesize;
+
+    prepare_command_packet(cmd_packet, EZP_CMD_STATUS, chip);
+
+    while (retries-- > 0)
+    {
+        res = exp2019_send_command(handle, cmd_packet, result);
+        if (res == 0)
+        {
+            if ((result[4] & 0x01) == 0)
+            {
+                return 0; // ready!
+            }
+        }
+        usleep(50000); // 50ms matching original software exactly
+    }
+    return EXP2019_COMMAND_ERROR;
+}
+
+
 
 EZP2019_API int exp2019_init(exp2019 *handle)
 {
@@ -475,6 +510,9 @@ EZP2019_API int exp2019_write_ic(exp2019 handle, int fd, ezp2019_callback_t call
         if (callback) callback(offset + written, size, context);
     }
 
+    res = exp2019_wait_ready(dev, chip);
+    if (res) { ret = EXP2019_COMMAND_ERROR; goto release; }
+
 release:
     libusb_release_interface(dev, 0);
 exit:
@@ -579,6 +617,9 @@ EZP2019_API int exp2019_erase_ic(exp2019 handle)
 
     res = exp2019_send_command(dev, cmd_packet, tmp);
     if (res) { ret = EXP2019_LIBUSB_ERROR; goto release; }
+
+    res = exp2019_wait_ready(dev, chip);
+    if (res) { ret = EXP2019_COMMAND_ERROR; goto release; }
 
 release:
     libusb_release_interface(dev, 0);
@@ -698,7 +739,7 @@ EZP2019_API uint16_t exp2019_get_chip_address_by_id(uint32_t chip_id)
     {
         if (ezp2019_chips[i].chip_id == chip_id)
         {
-            return ezp2019_chips[i].address;
+            return ezp2019_chips[i].protocol_enum_cfg;
         }
     }
 
@@ -724,7 +765,7 @@ EZP2019_API uint16_t exp2019_get_chip_reserved_by_id(uint32_t chip_id)
     {
         if (ezp2019_chips[i].chip_id == chip_id)
         {
-            return ezp2019_chips[i].reserved;
+            return ezp2019_chips[i].protocol_variant;
         }
     }
 
