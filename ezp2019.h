@@ -47,7 +47,7 @@ EZP2019_API int exp2019_reset_ic(exp2019 handle);
 EZP2019_API int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, volatile bool *abort);
 EZP2019_API int exp2019_write_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, volatile bool *abort);
 EZP2019_API int exp2019_verify_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, volatile bool *abort, bool *is_matched);
-EZP2019_API int exp2019_erase_ic(exp2019 handle);
+EZP2019_API int exp2019_erase_ic(exp2019 handle, volatile bool *abort);
 
 EZP2019_API const char *exp2019_error_string(int error);
 EZP2019_API size_t      exp2019_get_num_chips(void);
