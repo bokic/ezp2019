@@ -2,6 +2,16 @@ cmake_minimum_required(VERSION 3.15)
 # --- Version Detection ---
 find_package(Git QUIET)
 if(GIT_FOUND)
+    # Get the latest tag
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} describe --tags --abbrev=0
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_VARIABLE GIT_TAG
+        ERROR_QUIET
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    
+    # Get the full version description (with distance and hash)
     execute_process(
         COMMAND ${GIT_EXECUTABLE} describe --tags --always --dirty
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -11,12 +21,17 @@ if(GIT_FOUND)
     )
 endif()
 
-if(NOT GIT_VERSION)
-    set(GIT_VERSION "0.0.0-unknown")
+if(NOT GIT_TAG)
+    set(GIT_TAG "0.0.0")
 endif()
 
-# Extract numeric part for CMake project() (e.g., 0.9.0 from 0.9.0-1-g...-dirty)
-string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+" PROJECT_NUMERIC_VERSION "${GIT_VERSION}")
+if(NOT GIT_VERSION)
+    set(GIT_VERSION "${GIT_TAG}-unknown")
+endif()
+
+# Clean up tag for CMake versioning (remove 'v' prefix if present)
+string(REGEX REPLACE "^v" "" CLEAN_TAG "${GIT_TAG}")
+string(REGEX MATCH "^[0-9]+(\\.[0-9]+)*" PROJECT_NUMERIC_VERSION "${CLEAN_TAG}")
 if(NOT PROJECT_NUMERIC_VERSION)
     set(PROJECT_NUMERIC_VERSION "0.0.0")
 endif()
@@ -25,6 +40,8 @@ project(ezp2019
     VERSION ${PROJECT_NUMERIC_VERSION}
     LANGUAGES C
 )
+
+message(STATUS "ezp2019 version: ${PROJECT_VERSION} (Git: ${GIT_VERSION}, Tag: ${GIT_TAG})")
 
 set(EZP2019_FULL_VERSION ${GIT_VERSION})
 
@@ -89,7 +106,7 @@ add_library(ezp2019 SHARED
 
 set_target_properties(ezp2019 PROPERTIES
     VERSION ${PROJECT_VERSION}
-    SOVERSION ${PROJECT_VERSION_MAJOR}
+    SOVERSION ${PROJECT_VERSION}
     PUBLIC_HEADER ezp2019.h
 )
 
