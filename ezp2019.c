@@ -26,6 +26,20 @@
 typedef libusb_context *exp2019;
 
 
+
+static const Chip *exp2019_find_ic_by_id(uint32_t chip_id)
+{
+    for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
+    {
+        if (ezp2019_chips[i].chip_id == chip_id)
+        {
+            return &ezp2019_chips[i];
+        }
+    }
+
+    return NULL;
+}
+
 static void prepare_command_packet(uint8_t packet[EZP2019_PACKET_SIZE], uint8_t command_id, const Chip *chip)
 {
     memset(packet, 0, EZP2019_PACKET_SIZE);
@@ -357,7 +371,7 @@ int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *c
         goto exit;
     }
 
-    const Chip *chip = (const Chip *)exp2019_find_ic_by_id(chip_id);
+    const Chip *chip = exp2019_find_ic_by_id(chip_id);
     if (!chip)
     {
         ret = EXP2019_COMMAND_ERROR;
@@ -483,7 +497,7 @@ int exp2019_write_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *
     res = exp2019_connected_ic(handle, &chip_id);
     if (res) return EXP2019_LIBUSB_ERROR;
 
-    const Chip *chip = (const Chip *)exp2019_find_ic_by_id(chip_id);
+    const Chip *chip = exp2019_find_ic_by_id(chip_id);
     if (!chip) return EXP2019_COMMAND_ERROR;
 
     size_t size = chip->size;
@@ -540,7 +554,7 @@ int exp2019_verify_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void 
     res = exp2019_connected_ic(handle, &chip_id);
     if (res) return EXP2019_LIBUSB_ERROR;
 
-    const Chip *chip = (const Chip *)exp2019_find_ic_by_id(chip_id);
+    const Chip *chip = exp2019_find_ic_by_id(chip_id);
     if (!chip) return EXP2019_COMMAND_ERROR;
 
     size_t size = chip->size;
@@ -607,7 +621,7 @@ int exp2019_erase_ic(exp2019 handle, volatile bool *abort)
     res = exp2019_connected_ic(handle, &chip_id);
     if (res) return EXP2019_LIBUSB_ERROR;
 
-    const Chip *chip = (const Chip *)exp2019_find_ic_by_id(chip_id);
+    const Chip *chip = exp2019_find_ic_by_id(chip_id);
     if (!chip) return EXP2019_COMMAND_ERROR;
 
     dev = libusb_open_device_with_vid_pid(handle, EZP2019_VID, EZP2019_PID);
@@ -656,17 +670,17 @@ size_t exp2019_get_num_chips(void)
 
 uint32_t exp2019_get_ic_id(size_t index)
 {
-    if (index >= ezp2019_num_chips) return UINT32_MAX;
+    if (index >= ezp2019_num_chips) return EXP2019_INVALID_CHIP_ID;
     return ezp2019_chips[index].chip_id;
 }
 
-const void *exp2019_find_ic_by_id(uint32_t chip_id)
+const char *exp2019_get_chip_type_by_id(uint32_t chip_id)
 {
     for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
     {
         if (ezp2019_chips[i].chip_id == chip_id)
         {
-            return &ezp2019_chips[i];
+            return ezp2019_chips[i].chip_type;
         }
     }
 
@@ -699,19 +713,6 @@ const char *exp2019_get_chip_name_by_id(uint32_t chip_id)
     return NULL;
 }
 
-const char *exp2019_get_chip_type_by_id(uint32_t chip_id)
-{
-    for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
-    {
-        if (ezp2019_chips[i].chip_id == chip_id)
-        {
-            return ezp2019_chips[i].chip_type;
-        }
-    }
-
-    return NULL;
-}
-
 uint32_t exp2019_get_chip_size_by_id(uint32_t chip_id)
 {
     for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
@@ -725,26 +726,39 @@ uint32_t exp2019_get_chip_size_by_id(uint32_t chip_id)
     return 0;
 }
 
-uint16_t exp2019_get_chip_page_size_by_id(uint32_t chip_id)
+uint16_t exp2019_get_chip_protocol_variant_by_id(uint32_t chip_id)
 {
     for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
     {
         if (ezp2019_chips[i].chip_id == chip_id)
         {
-            return ezp2019_chips[i].pagesize;
+            return ezp2019_chips[i].protocol_variant;
         }
     }
 
     return 0;
 }
 
-uint16_t exp2019_get_chip_address_by_id(uint32_t chip_id)
+uint16_t exp2019_get_chip_protocol_enum_cfg_by_id(uint32_t chip_id)
 {
     for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
     {
         if (ezp2019_chips[i].chip_id == chip_id)
         {
             return ezp2019_chips[i].protocol_enum_cfg;
+        }
+    }
+
+    return 0;
+}
+
+uint16_t exp2019_get_chip_pagesize_by_id(uint32_t chip_id)
+{
+    for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
+    {
+        if (ezp2019_chips[i].chip_id == chip_id)
+        {
+            return ezp2019_chips[i].pagesize;
         }
     }
 
@@ -758,19 +772,6 @@ uint16_t exp2019_get_chip_timing_by_id(uint32_t chip_id)
         if (ezp2019_chips[i].chip_id == chip_id)
         {
             return ezp2019_chips[i].timing;
-        }
-    }
-
-    return 0;
-}
-
-uint16_t exp2019_get_chip_reserved_by_id(uint32_t chip_id)
-{
-    for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
-    {
-        if (ezp2019_chips[i].chip_id == chip_id)
-        {
-            return ezp2019_chips[i].protocol_variant;
         }
     }
 

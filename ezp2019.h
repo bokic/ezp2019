@@ -37,6 +37,8 @@ enum {
     EXP2019_NOT_IMPLEMENTED,
 };
 
+#define EXP2019_INVALID_CHIP_ID UINT32_MAX
+
 typedef struct libusb_context* exp2019;
 
 EZP2019_API int exp2019_init(exp2019 *handle);
@@ -52,15 +54,14 @@ EZP2019_API int exp2019_erase_ic(exp2019 handle, volatile bool *abort);
 EZP2019_API const char *exp2019_error_string(int error);
 EZP2019_API size_t      exp2019_get_num_chips(void);
 EZP2019_API uint32_t    exp2019_get_ic_id(size_t index);
-EZP2019_API const void *exp2019_find_ic_by_id(uint32_t chip_id);
 EZP2019_API const char *exp2019_get_manufacturer_by_id(uint32_t chip_id);
 EZP2019_API const char *exp2019_get_chip_name_by_id(uint32_t chip_id);
 EZP2019_API const char *exp2019_get_chip_type_by_id(uint32_t chip_id);
 EZP2019_API uint32_t    exp2019_get_chip_size_by_id(uint32_t chip_id);
-EZP2019_API uint16_t    exp2019_get_chip_page_size_by_id(uint32_t chip_id);
-EZP2019_API uint16_t    exp2019_get_chip_address_by_id(uint32_t chip_id);
+EZP2019_API uint16_t    exp2019_get_chip_protocol_variant_by_id(uint32_t chip_id);
+EZP2019_API uint16_t    exp2019_get_chip_protocol_enum_cfg_by_id(uint32_t chip_id);
+EZP2019_API uint16_t    exp2019_get_chip_pagesize_by_id(uint32_t chip_id);
 EZP2019_API uint16_t    exp2019_get_chip_timing_by_id(uint32_t chip_id);
-EZP2019_API uint16_t    exp2019_get_chip_reserved_by_id(uint32_t chip_id);
 EZP2019_API uint32_t    exp2019_get_chip_flags_by_id(uint32_t chip_id);
 
 #ifdef __cplusplus
