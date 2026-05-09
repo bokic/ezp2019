@@ -104,14 +104,6 @@ int main(int argc, char *argv[])
     }
     else if (strcmp(argv[1], "write_ic") == 0)
     {
-        char confirm[10];
-        fprintf(stderr, "Writing will overwrite the IC data. Are you sure? [y/N]: ");
-        if (fgets(confirm, sizeof(confirm), stdin) == NULL || (tolower(confirm[0]) != 'y' && tolower(confirm[0]) != 'Y'))
-        {
-            fprintf(stderr, "Aborted.\n");
-            return EXIT_SUCCESS;
-        }
-
         fprintf(stderr, "Writing:\n");
         ret = exp2019_write_ic(handle, STDIN_FILENO, progress_callback, NULL, &abort_flag);
         fprintf(stderr, "\n");
