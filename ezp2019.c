@@ -50,11 +50,11 @@ static void prepare_command_packet(uint8_t packet[EZP2019_PACKET_SIZE], uint8_t 
         packet[2] = chip->protocol_enum_cfg & 0xFF;
         packet[3] = (chip->protocol_enum_cfg >> 8) & 0xFF;
 
-        packet[4] = (chip->protocol_variant >> 8) & 0xFF;
-        packet[5] = chip->protocol_variant & 0xFF;
+        packet[4] = (chip->pagesize >> 8) & 0xFF;
+        packet[5] = chip->pagesize & 0xFF;
         
-        packet[6] = (chip->pagesize >> 8) & 0xFF;
-        packet[7] = chip->pagesize & 0xFF;
+        packet[6] = (chip->timeout_retries >> 8) & 0xFF;
+        packet[7] = chip->timeout_retries & 0xFF;
         
         packet[8] = (chip->size >> 24) & 0xFF;
         packet[9] = (chip->size >> 16) & 0xFF;
@@ -116,7 +116,7 @@ static int exp2019_wait_ready(void *handle, const Chip *chip, volatile bool *abo
     uint8_t cmd_packet[EZP2019_PACKET_SIZE] = {0, };
     int res = 0;
     
-    int retries = chip->pagesize;
+    int retries = chip->timeout_retries;
 
     memset(cmd_packet, 0, EZP2019_PACKET_SIZE);
     cmd_packet[1] = EZP_CMD_STATUS;
@@ -769,13 +769,13 @@ uint32_t exp2019_get_chip_size_by_id(uint32_t chip_id)
     return 0;
 }
 
-uint16_t exp2019_get_chip_protocol_variant_by_id(uint32_t chip_id)
+uint16_t exp2019_get_chip_pagesize_by_id(uint32_t chip_id)
 {
     for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
     {
         if (ezp2019_chips[i].chip_id == chip_id)
         {
-            return ezp2019_chips[i].protocol_variant;
+            return ezp2019_chips[i].pagesize;
         }
     }
 
@@ -795,26 +795,26 @@ uint16_t exp2019_get_chip_protocol_enum_cfg_by_id(uint32_t chip_id)
     return 0;
 }
 
-uint16_t exp2019_get_chip_pagesize_by_id(uint32_t chip_id)
+uint16_t exp2019_get_chip_timeout_retries_by_id(uint32_t chip_id)
 {
     for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
     {
         if (ezp2019_chips[i].chip_id == chip_id)
         {
-            return ezp2019_chips[i].pagesize;
+            return ezp2019_chips[i].timeout_retries;
         }
     }
 
     return 0;
 }
 
-uint16_t exp2019_get_chip_timing_by_id(uint32_t chip_id)
+uint16_t exp2019_get_chip_unknown_delay_by_id(uint32_t chip_id)
 {
     for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
     {
         if (ezp2019_chips[i].chip_id == chip_id)
         {
-            return ezp2019_chips[i].timing;
+            return ezp2019_chips[i].unknown_delay;
         }
     }
 

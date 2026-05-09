@@ -17,7 +17,7 @@ def generate_header(input_bin, output_header):
                     break
                 
                 # binary unpack
-                (raw_name, chip_id, size, proto_variant, proto_enum_cfg, pagesize, timing, flags) = struct.unpack(struct_format, data)
+                (raw_name, chip_id, size, pagesize, proto_enum_cfg, timeout_retries, unknown_delay, flags) = struct.unpack(struct_format, data)
                 
                 # decode name and normalize full-width characters
                 name_str = raw_name.decode("gb18030").split("\0")[0]
@@ -33,10 +33,10 @@ def generate_header(input_bin, output_header):
                     "name": parts[2].replace('"', '\\"'),
                     "id": chip_id,
                     "size": size,
-                    "proto_variant": proto_variant,
-                    "proto_enum_cfg": proto_enum_cfg,
                     "pagesize": pagesize,
-                    "timing": timing,
+                    "proto_enum_cfg": proto_enum_cfg,
+                    "timeout_retries": timeout_retries,
+                    "unknown_delay": unknown_delay,
                     "flags": flags
                 })
 
@@ -70,10 +70,10 @@ def generate_header(input_bin, output_header):
             f'"{c["name"]}",',
             f'0x{c["id"]:08X},',
             f'0x{c["size"]:08X},',
-            f'0x{c["proto_variant"]:04X},',
+            f'0x{c["pagesize"]:04X},',
             f'0x{c["proto_enum_cfg"]:04X},',
-            f'{c["pagesize"]},',
-            f'{c["timing"]},',
+            f'{c["timeout_retries"]},',
+            f'{c["unknown_delay"]},',
             f'{op_mask_str}'
         ])
 
@@ -142,10 +142,10 @@ def generate_header(input_bin, output_header):
         f.write("    const char *chip_name;\n")
         f.write("    uint32_t chip_id;\n")
         f.write("    uint32_t size;\n")
-        f.write("    uint16_t protocol_variant;\n")
-        f.write("    uint16_t protocol_enum_cfg;\n")
         f.write("    uint16_t pagesize;\n")
-        f.write("    uint16_t timing;\n")
+        f.write("    uint16_t protocol_enum_cfg;\n")
+        f.write("    uint16_t timeout_retries;\n")
+        f.write("    uint16_t unknown_delay;\n")
         f.write("    uint32_t flags;\n")
         f.write("} Chip;\n\n")
         f.write("_Static_assert(sizeof(Chip) == 48, \"Chip struct must be exactly 48 bytes\");\n\n")

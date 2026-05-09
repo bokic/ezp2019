@@ -58,10 +58,10 @@ EZP2019_API const char *exp2019_get_manufacturer_by_id(uint32_t chip_id);
 EZP2019_API const char *exp2019_get_chip_name_by_id(uint32_t chip_id);
 EZP2019_API const char *exp2019_get_chip_type_by_id(uint32_t chip_id);
 EZP2019_API uint32_t    exp2019_get_chip_size_by_id(uint32_t chip_id);
-EZP2019_API uint16_t    exp2019_get_chip_protocol_variant_by_id(uint32_t chip_id);
-EZP2019_API uint16_t    exp2019_get_chip_protocol_enum_cfg_by_id(uint32_t chip_id);
 EZP2019_API uint16_t    exp2019_get_chip_pagesize_by_id(uint32_t chip_id);
-EZP2019_API uint16_t    exp2019_get_chip_timing_by_id(uint32_t chip_id);
+EZP2019_API uint16_t    exp2019_get_chip_protocol_enum_cfg_by_id(uint32_t chip_id);
+EZP2019_API uint16_t    exp2019_get_chip_timeout_retries_by_id(uint32_t chip_id);
+EZP2019_API uint16_t    exp2019_get_chip_unknown_delay_by_id(uint32_t chip_id);
 EZP2019_API uint32_t    exp2019_get_chip_flags_by_id(uint32_t chip_id);
 
 #ifdef __cplusplus
