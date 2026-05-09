@@ -469,6 +469,7 @@ int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *c
         }
     }
 
+release:
     prepare_command_packet(cmd_packet, EZP_CMD_RESET, NULL);
     cmd_packet[0] = 0x01;
     res = exp2019_send_command(dev, cmd_packet, tmp);
@@ -476,10 +477,8 @@ int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *c
     {
         ret = EXP2019_LIBUSB_ERROR;
         fprintf(stderr, "Error while resetting IC: %s\n", libusb_strerror(res));
-        goto release;
     }
 
-release:
     if (ret == EXP2019_NO_ERROR)
     {
         res = libusb_release_interface(dev, 0);
@@ -554,7 +553,25 @@ int exp2019_write_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *
     }
 
 release:
-    libusb_release_interface(dev, 0);
+    prepare_command_packet(cmd_packet, EZP_CMD_RESET, NULL);
+    cmd_packet[0] = 0x01;
+    res = exp2019_send_command(dev, cmd_packet, tmp);
+    if (res)
+    {
+        ret = EXP2019_LIBUSB_ERROR;
+        fprintf(stderr, "Error while resetting IC: %s\n", libusb_strerror(res));
+    }
+
+    if (ret == EXP2019_NO_ERROR)
+    {
+        res = libusb_release_interface(dev, 0);
+        if (res)
+        {
+            ret = EXP2019_LIBUSB_ERROR;
+            fprintf(stderr, "Error while releasing interface: %s\n", libusb_strerror(res));
+        }
+    }
+
 exit:
     libusb_close(dev);
     return ret;
@@ -629,7 +646,25 @@ int exp2019_verify_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void 
     }
 
 release:
-    libusb_release_interface(dev, 0);
+    prepare_command_packet(cmd_packet, EZP_CMD_RESET, NULL);
+    cmd_packet[0] = 0x01;
+    res = exp2019_send_command(dev, cmd_packet, tmp);
+    if (res)
+    {
+        ret = EXP2019_LIBUSB_ERROR;
+        fprintf(stderr, "Error while resetting IC: %s\n", libusb_strerror(res));
+    }
+
+    if (ret == EXP2019_NO_ERROR)
+    {
+        res = libusb_release_interface(dev, 0);
+        if (res)
+        {
+            ret = EXP2019_LIBUSB_ERROR;
+            fprintf(stderr, "Error while releasing interface: %s\n", libusb_strerror(res));
+        }
+    }
+
 exit:
     libusb_close(dev);
     return ret;
@@ -684,7 +719,26 @@ int exp2019_erase_ic(exp2019 handle, volatile bool *abort)
     if (res) { ret = EXP2019_COMMAND_ERROR; goto release; }
 
 release:
-    libusb_release_interface(dev, 0);
+    uint8_t cmd_packet[EZP2019_PACKET_SIZE] = {0, };
+    prepare_command_packet(cmd_packet, EZP_CMD_RESET, NULL);
+    cmd_packet[0] = 0x01;
+    res = exp2019_send_command(dev, cmd_packet, tmp);
+    if (res)
+    {
+        ret = EXP2019_LIBUSB_ERROR;
+        fprintf(stderr, "Error while resetting IC: %s\n", libusb_strerror(res));
+    }
+
+    if (ret == EXP2019_NO_ERROR)
+    {
+        res = libusb_release_interface(dev, 0);
+        if (res)
+        {
+            ret = EXP2019_LIBUSB_ERROR;
+            fprintf(stderr, "Error while releasing interface: %s\n", libusb_strerror(res));
+        }
+    }
+
 exit:
     libusb_close(dev);
     return ret;
