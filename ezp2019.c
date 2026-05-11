@@ -18,8 +18,9 @@
 
 #define EZP2019_READ_SIZE 256
 
-#define EP_OUT (2 | LIBUSB_ENDPOINT_OUT)
-#define EP_IN  (2 | LIBUSB_ENDPOINT_IN)
+#define EP_DATA_OUT (1 | LIBUSB_ENDPOINT_OUT)
+#define EP_CMD_OUT  (2 | LIBUSB_ENDPOINT_OUT)
+#define EP_IN       (2 | LIBUSB_ENDPOINT_IN)
 
 #define US_ENGLISH 0x0409
 
@@ -66,11 +67,6 @@ static void prepare_command_packet(uint8_t packet[EZP2019_PACKET_SIZE], uint8_t 
         packet[14] = (chip->chip_id >> 8) & 0xFF;
         packet[15] = chip->chip_id & 0xFF;
         
-        packet[16] = chip->flags & 0xFF;
-        packet[17] = (chip->flags >> 8) & 0xFF;
-        packet[18] = (chip->flags >> 16) & 0xFF;
-        packet[19] = (chip->flags >> 24) & 0xFF;
-
         packet[28] = (chip->flags >> 24) & 0xFF;
     }
 }
@@ -82,34 +78,46 @@ static int exp2019_send_command(void *handle, const uint8_t command[EZP2019_PACK
     int res = 0;
     int received = 0;
 
-    res = libusb_bulk_transfer(handle, EP_OUT, (uint8_t *)command, EZP2019_PACKET_SIZE, &sent, 5000);
+    res = libusb_bulk_transfer(handle, EP_CMD_OUT, (uint8_t *)command, EZP2019_PACKET_SIZE, &sent, 5000);
     if (res || sent != EZP2019_PACKET_SIZE)
     {
         return EXP2019_LIBUSB_ERROR;
     }
 
-    res = libusb_bulk_transfer(handle, EP_IN, result, EZP2019_PACKET_SIZE, &received, 5000);
-    if (res || received != EZP2019_PACKET_SIZE)
+    if (result != NULL)
     {
-        return EXP2019_LIBUSB_ERROR;
+        usleep(50000);
+        res = libusb_bulk_transfer(handle, EP_IN, result, EZP2019_PACKET_SIZE, &received, 5000);
+        if (res || received != EZP2019_PACKET_SIZE)
+        {
+            return EXP2019_LIBUSB_ERROR;
+        }
     }
 
     return 0;
 }
 
-static int exp2019_trigger_transfer(libusb_device_handle *dev, uint32_t size)
+static int exp2019_trigger_transfer(libusb_device_handle *dev, uint32_t address, bool read_mode)
 {
     uint8_t cmd_packet[EZP2019_PACKET_SIZE] = {0, };
     uint8_t result[EZP2019_PACKET_SIZE] = {0, };
     cmd_packet[1] = 0x05;
     
-    cmd_packet[8] = (size >> 24) & 0xFF;
-    cmd_packet[9] = (size >> 16) & 0xFF;
-    cmd_packet[10] = (size >> 8) & 0xFF;
-    cmd_packet[11] = size & 0xFF;
+    cmd_packet[8]  = (address >> 24) & 0xFF;
+    cmd_packet[9]  = (address >> 16) & 0xFF;
+    cmd_packet[10] = (address >> 8) & 0xFF;
+    cmd_packet[11] = address & 0xFF;
     
-    return exp2019_send_command(dev, cmd_packet, result);
+    return exp2019_send_command(dev, cmd_packet, read_mode ? result : NULL);
 }
+static int exp2019_reset_device(libusb_device_handle *dev)
+{
+    uint8_t cmd_packet[EZP2019_PACKET_SIZE] = {0, };
+    cmd_packet[0] = 0x01;
+    cmd_packet[1] = 0x08;
+    return exp2019_send_command(dev, cmd_packet, NULL);
+}
+
 
 static int exp2019_wait_ready(void *handle, const Chip *chip, volatile bool *abort)
 {
@@ -121,9 +129,14 @@ static int exp2019_wait_ready(void *handle, const Chip *chip, volatile bool *abo
     memset(cmd_packet, 0, EZP2019_PACKET_SIZE);
     cmd_packet[1] = EZP_CMD_STATUS;
 
+    int total_polls = 0;
     while (retries-- > 0)
     {
-        uint8_t result[EZP2019_PACKET_SIZE] = {0, };
+        total_polls++;
+        usleep(50000);
+        
+        uint8_t result[EZP2019_PACKET_SIZE];
+        memset(result, 0xFF, sizeof(result));
 
         if (abort && *abort)
         {
@@ -135,10 +148,11 @@ static int exp2019_wait_ready(void *handle, const Chip *chip, volatile bool *abo
         {
             if ((result[0] & 0x01) == 0)
             {
-                return 0;
+                if (total_polls > 1) {
+                    return 0;
+                }
             }
         }
-        usleep(50000);
     }
     return EXP2019_COMMAND_ERROR;
 }
@@ -257,16 +271,6 @@ int exp2019_connected_ic(exp2019 handle, uint32_t *chip_id)
         if (chip_id)
         {
             *chip_id = (data[1] << 16) | (data[2] << 8) | data[3];
-        }
-
-        prepare_command_packet(cmd_packet, EZP_CMD_RESET, NULL);
-        cmd_packet[0] = 0x01;
-
-        res = exp2019_send_command(dev, cmd_packet, data);
-        if (res)
-        {
-            ret = EXP2019_LIBUSB_ERROR;
-            goto exit;
         }
 
         res = libusb_release_interface(dev, 0);
@@ -402,15 +406,22 @@ int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *c
         goto exit;
     }
 
-    uint8_t cmd_id = EZP_CMD_READ_SPI; 
+    exp2019_reset_device(dev);
+    usleep(100000);
+
+    uint8_t cmd_id = EZP_CMD_READ_SPI;
     if (chip->chip_type && (strcmp(chip->chip_type, "24_EEPROM") == 0 || strcmp(chip->chip_type, "93_EEPROM") == 0))
     {
         cmd_id = EZP_CMD_READ_EE;
     }
 
     uint8_t cmd_packet[EZP2019_PACKET_SIZE] = {0, };
-    prepare_command_packet(cmd_packet, cmd_id, chip);
 
+    prepare_command_packet(cmd_packet, EZP_CMD_CONNECT, chip);
+    res = exp2019_send_command(dev, cmd_packet, tmp);
+    if (res) { ret = EXP2019_LIBUSB_ERROR; goto release; }
+
+    prepare_command_packet(cmd_packet, cmd_id, chip);
     res = exp2019_send_command(dev, cmd_packet, tmp);
     if (res)
     {
@@ -419,7 +430,7 @@ int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *c
         goto release;
     }
 
-    res = exp2019_trigger_transfer(dev, (uint32_t)size);
+    res = exp2019_trigger_transfer(dev, 0, true);
     if (res)
     {
         ret = EXP2019_LIBUSB_ERROR;
@@ -427,7 +438,8 @@ int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *c
         goto release;
     }
 
-    for (size_t offset = 0; offset < size; offset += EZP2019_READ_SIZE)
+    size_t pagesize = chip->pagesize ? chip->pagesize : EZP2019_READ_SIZE;
+    for (size_t offset = 0; offset < size; offset += pagesize)
     {
         if (abort && *abort)
         {
@@ -435,15 +447,14 @@ int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *c
             goto release;
         }
 
-        uint8_t data[EZP2019_READ_SIZE] = {0, };
+        uint8_t data[256] = {0, };
         int readed = 0;
-        size_t chunk = EZP2019_READ_SIZE;
+        size_t chunk = (size - offset < pagesize) ? (size - offset) : pagesize;
 
         if (callback)
         {
             callback(offset, size, context);
         }
-
 
         res = libusb_bulk_transfer(dev, EP_IN, data, (int)chunk, &readed, 5000);
         if (res)
@@ -461,7 +472,7 @@ int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *c
             goto release;
         }
 
-        if (readed != EZP2019_READ_SIZE)
+        if (readed != (int)chunk)
         {
             ret = EXP2019_LIBUSB_ERROR;
             fprintf(stderr, "Error: Not all bytes read\n");
@@ -470,14 +481,7 @@ int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *c
     }
 
 release:
-    prepare_command_packet(cmd_packet, EZP_CMD_RESET, NULL);
-    cmd_packet[0] = 0x01;
-    res = exp2019_send_command(dev, cmd_packet, tmp);
-    if (res)
-    {
-        ret = EXP2019_LIBUSB_ERROR;
-        fprintf(stderr, "Error while resetting IC: %s\n", libusb_strerror(res));
-    }
+    exp2019_reset_device(dev);
 
     if (ret == EXP2019_NO_ERROR)
     {
@@ -493,6 +497,7 @@ exit:
     libusb_close(dev);
     return ret;
 }
+
 
 int exp2019_write_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, volatile bool *abort)
 {
@@ -519,6 +524,9 @@ int exp2019_write_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *
     res = libusb_claim_interface(dev, 0);
     if (res) { ret = EXP2019_LIBUSB_ERROR; goto exit; }
 
+    exp2019_reset_device(dev);
+    usleep(100000);
+
     uint8_t cmd_id = EZP_CMD_READ_SPI; 
     if (chip->chip_type && (strcmp(chip->chip_type, "24_EEPROM") == 0 || strcmp(chip->chip_type, "93_EEPROM") == 0))
     {
@@ -526,24 +534,35 @@ int exp2019_write_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *
     }
 
     uint8_t cmd_packet[EZP2019_PACKET_SIZE] = {0, };
-    prepare_command_packet(cmd_packet, cmd_id, chip);
 
+    prepare_command_packet(cmd_packet, EZP_CMD_CONNECT, chip);
     res = exp2019_send_command(dev, cmd_packet, tmp);
     if (res) { ret = EXP2019_LIBUSB_ERROR; goto release; }
 
-    res = exp2019_trigger_transfer(dev, (uint32_t)size);
+    prepare_command_packet(cmd_packet, cmd_id, chip);
+    res = exp2019_send_command(dev, cmd_packet, tmp);
     if (res) { ret = EXP2019_LIBUSB_ERROR; goto release; }
 
-    for (size_t offset = 0; offset < size; offset += EZP2019_READ_SIZE)
+    res = exp2019_trigger_transfer(dev, 0, false); 
+    if (res) { fprintf(stderr, "exp2019_trigger_transfer failed with %d\n", res); ret = EXP2019_LIBUSB_ERROR; goto release; }
+
+    size_t pagesize = chip->pagesize ? chip->pagesize : EZP2019_READ_SIZE;
+    for (size_t offset = 0; offset < size; offset += pagesize)
     {
         if (abort && *abort) { ret = EXP2019_ABORTED; goto release; }
-        uint8_t data[EZP2019_READ_SIZE];
-        ssize_t n = read(fd, data, EZP2019_READ_SIZE);
-        if (n <= 0) break;
+        
+        uint8_t data[256] = {0, };
+        size_t chunk_len = (size - offset < pagesize) ? (size - offset) : pagesize;
+        ssize_t n = read(fd, data, chunk_len);
+        
+        if (n < (ssize_t)chunk_len)
+        {
+            memset(data + (n > 0 ? n : 0), 0xFF, chunk_len - (n > 0 ? n : 0));
+        }
         
         int written = 0;
-        res = libusb_bulk_transfer(dev, EP_OUT, data, (int)n, &written, 5000);
-        if (res) { ret = EXP2019_LIBUSB_ERROR; goto release; }
+        res = libusb_bulk_transfer(dev, EP_DATA_OUT, data, (int)chunk_len, &written, 5000);
+        if (res) { fprintf(stderr, "libusb_bulk_transfer loop failed at offset %zu with res %d (%s)\n", offset, res, libusb_strerror(res)); ret = EXP2019_LIBUSB_ERROR; goto release; }
         if (callback) callback(offset + written, size, context);
     }
 
@@ -552,15 +571,11 @@ int exp2019_write_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *
         usleep(100000);
     }
 
+    res = exp2019_wait_ready(dev, chip, abort);
+    if (res) { fprintf(stderr, "Hardware poll waiting failed at write completion\n"); ret = EXP2019_COMMAND_ERROR; goto release; }
+
 release:
-    prepare_command_packet(cmd_packet, EZP_CMD_RESET, NULL);
-    cmd_packet[0] = 0x01;
-    res = exp2019_send_command(dev, cmd_packet, tmp);
-    if (res)
-    {
-        ret = EXP2019_LIBUSB_ERROR;
-        fprintf(stderr, "Error while resetting IC: %s\n", libusb_strerror(res));
-    }
+    exp2019_reset_device(dev);
 
     if (ret == EXP2019_NO_ERROR)
     {
@@ -604,6 +619,9 @@ int exp2019_verify_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void 
     res = libusb_claim_interface(dev, 0);
     if (res) { ret = EXP2019_LIBUSB_ERROR; goto exit; }
 
+    exp2019_reset_device(dev);
+    usleep(100000);
+
     uint8_t cmd_id = EZP_CMD_READ_SPI; 
     if (chip->chip_type && (strcmp(chip->chip_type, "24_EEPROM") == 0 || strcmp(chip->chip_type, "93_EEPROM") == 0))
     {
@@ -611,33 +629,38 @@ int exp2019_verify_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void 
     }
 
     uint8_t cmd_packet[EZP2019_PACKET_SIZE] = {0, };
-    prepare_command_packet(cmd_packet, cmd_id, chip);
 
+    prepare_command_packet(cmd_packet, EZP_CMD_CONNECT, chip);
     res = exp2019_send_command(dev, cmd_packet, tmp);
     if (res) { ret = EXP2019_LIBUSB_ERROR; goto release; }
 
-    res = exp2019_trigger_transfer(dev, (uint32_t)size);
+    prepare_command_packet(cmd_packet, cmd_id, chip);
+    res = exp2019_send_command(dev, cmd_packet, tmp);
     if (res) { ret = EXP2019_LIBUSB_ERROR; goto release; }
 
-    for (size_t offset = 0; offset < size; offset += EZP2019_READ_SIZE)
+    res = exp2019_trigger_transfer(dev, 0, true);
+    if (res) { ret = EXP2019_LIBUSB_ERROR; goto release; }
+
+    size_t pagesize = chip->pagesize ? chip->pagesize : EZP2019_READ_SIZE;
+    for (size_t offset = 0; offset < size; offset += pagesize)
     {
         if (abort && *abort) { ret = EXP2019_ABORTED; goto release; }
         
-        uint8_t ic_data[EZP2019_READ_SIZE];
-        uint8_t file_data[EZP2019_READ_SIZE];
+        uint8_t ic_data[256] = {0, };
+        uint8_t file_data[256] = {0, };
         int readed = 0;
+        size_t chunk = (size - offset < pagesize) ? (size - offset) : pagesize;
         
-        res = libusb_bulk_transfer(dev, EP_IN, ic_data, EZP2019_READ_SIZE, &readed, 5000);
-        if (res || readed != EZP2019_READ_SIZE) { ret = EXP2019_LIBUSB_ERROR; goto release; }
+        res = libusb_bulk_transfer(dev, EP_IN, ic_data, (int)chunk, &readed, 5000);
+        if (res || readed != (int)chunk) { ret = EXP2019_LIBUSB_ERROR; goto release; }
         
-        ssize_t n = read(fd, file_data, EZP2019_READ_SIZE);
-        if (n < (ssize_t)EZP2019_READ_SIZE)
+        ssize_t n = read(fd, file_data, chunk);
+        if (n < (ssize_t)chunk)
         {
-            // If file is shorter, treat remaining as mismatched (or handle differently)
-            memset(file_data + (n > 0 ? n : 0), 0xFF, EZP2019_READ_SIZE - (n > 0 ? n : 0));
+            memset(file_data + (n > 0 ? n : 0), 0xFF, chunk - (n > 0 ? n : 0));
         }
 
-        if (memcmp(ic_data, file_data, EZP2019_READ_SIZE) != 0)
+        if (memcmp(ic_data, file_data, chunk) != 0)
         {
             *is_matched = false;
         }
@@ -646,14 +669,7 @@ int exp2019_verify_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void 
     }
 
 release:
-    prepare_command_packet(cmd_packet, EZP_CMD_RESET, NULL);
-    cmd_packet[0] = 0x01;
-    res = exp2019_send_command(dev, cmd_packet, tmp);
-    if (res)
-    {
-        ret = EXP2019_LIBUSB_ERROR;
-        fprintf(stderr, "Error while resetting IC: %s\n", libusb_strerror(res));
-    }
+    exp2019_reset_device(dev);
 
     if (ret == EXP2019_NO_ERROR)
     {
@@ -674,9 +690,10 @@ int exp2019_erase_ic(exp2019 handle, volatile bool *abort)
 {
     int ret = EXP2019_NO_ERROR;
     libusb_device_handle *dev = NULL;
-    uint8_t tmp[EZP2019_PACKET_SIZE] = {0, };
     uint32_t chip_id = 0;
     int res = 0;
+    uint8_t tmp[EZP2019_PACKET_SIZE] = {0, };
+    uint8_t tmp2[EZP2019_PACKET_SIZE] = {0, };
 
     if (handle == NULL) return EXP2019_INVALID_ARGUMENT;
 
@@ -693,11 +710,19 @@ int exp2019_erase_ic(exp2019 handle, volatile bool *abort)
     res = libusb_claim_interface(dev, 0);
     if (res) { ret = EXP2019_LIBUSB_ERROR; goto exit; }
 
+    exp2019_reset_device(dev);
+    usleep(100000);
+
     uint8_t cmd_id = EZP_CMD_READ_SPI;
     if (chip->chip_type && (strcmp(chip->chip_type, "24_EEPROM") == 0 || strcmp(chip->chip_type, "93_EEPROM") == 0))
     {
         cmd_id = EZP_CMD_READ_EE;
     }
+
+    uint8_t probe_packet[EZP2019_PACKET_SIZE] = {0, };
+    prepare_command_packet(probe_packet, EZP_CMD_CONNECT, chip);
+    res = exp2019_send_command(dev, probe_packet, tmp2);
+    if (res) { ret = EXP2019_LIBUSB_ERROR; goto release; }
 
     uint8_t setup_packet[EZP2019_PACKET_SIZE] = {0, };
     prepare_command_packet(setup_packet, cmd_id, chip);
@@ -710,24 +735,14 @@ int exp2019_erase_ic(exp2019 handle, volatile bool *abort)
     erase_packet[0x1A] = 0x80;
     erase_packet[0x1B] = 0x00;
     
-    res = exp2019_send_command(dev, erase_packet, tmp);
+    res = exp2019_send_command(dev, erase_packet, NULL);
     if (res) { ret = EXP2019_LIBUSB_ERROR; goto release; }
 
     usleep(50000);
-
-    res = exp2019_wait_ready(dev, chip, abort);
-    if (res) { ret = EXP2019_COMMAND_ERROR; goto release; }
+    ret = exp2019_wait_ready(dev, chip, abort);
 
 release:
-    uint8_t cmd_packet[EZP2019_PACKET_SIZE] = {0, };
-    prepare_command_packet(cmd_packet, EZP_CMD_RESET, NULL);
-    cmd_packet[0] = 0x01;
-    res = exp2019_send_command(dev, cmd_packet, tmp);
-    if (res)
-    {
-        ret = EXP2019_LIBUSB_ERROR;
-        fprintf(stderr, "Error while resetting IC: %s\n", libusb_strerror(res));
-    }
+    exp2019_reset_device(dev);
 
     if (ret == EXP2019_NO_ERROR)
     {
