@@ -1,4 +1,4 @@
-# EZP2019 USB Programmer Utility
+# EZP2019 USB Programmer Utility [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/bokic/ezp2019)
 
 ![EZP2019 USB Programmer](img/ezp2019.jpg)
 
