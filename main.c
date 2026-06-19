@@ -30,6 +30,8 @@ static void progress_callback(size_t processed, size_t total, void *context)
 
 int main(int argc, char *argv[])
 {
+    int ret = EXIT_SUCCESS;
+
     signal(SIGINT, ctrl_c_handler);
 
     if (argc != 2)
@@ -46,8 +48,8 @@ int main(int argc, char *argv[])
     }
 
     exp2019 handle = NULL;
-    int ret = exp2019_init(&handle);
-    if (ret)
+    int res = exp2019_init(&handle);
+    if (res)
     {
         fprintf(stderr, "Failed to initialize EZP2019\n");
         return EXIT_FAILURE;
@@ -56,11 +58,12 @@ int main(int argc, char *argv[])
     if (strcmp(argv[1], "is_connected") == 0)
     {
         bool connected;
-        ret = exp2019_is_connected(handle, &connected);
-        if (ret)
+        res = exp2019_is_connected(handle, &connected);
+        if (res)
         {
-            fprintf(stderr, "Failed to check if connected. Error: %s\n",  exp2019_error_string(ret));
-            return EXIT_FAILURE;
+            fprintf(stderr, "Failed to check if connected. Error: %s\n",  exp2019_error_string(res));
+            ret = EXIT_FAILURE;
+            goto exit;
         }
 
         printf("Connected: %s\n", connected ? "true" : "false");
@@ -68,11 +71,12 @@ int main(int argc, char *argv[])
     else if (strcmp(argv[1], "connected_ic") == 0)
     {
         uint32_t chip_id = 0;
-        ret = exp2019_connected_ic(handle, &chip_id);
-        if (ret)
+        res = exp2019_connected_ic(handle, &chip_id);
+        if (res)
         {
-            fprintf(stderr, "Failed to get connected IC. Error: %s\n",  exp2019_error_string(ret));
-            return EXIT_FAILURE;
+            fprintf(stderr, "Failed to get connected IC. Error: %s\n",  exp2019_error_string(res));
+            ret = EXIT_FAILURE;
+            goto exit;
         }
 
         const char *manufacturer = exp2019_get_manufacturer_by_id(chip_id);
@@ -84,11 +88,12 @@ int main(int argc, char *argv[])
     else if (strcmp(argv[1], "read_ic") == 0)
     {
         uint32_t chip_id;
-        ret = exp2019_connected_ic(handle, &chip_id);
-        if (ret != EXP2019_NO_ERROR)
+        res = exp2019_connected_ic(handle, &chip_id);
+        if (res != EXP2019_NO_ERROR)
         {
-            fprintf(stderr, "Failed to get connected IC. Error: %s\n",  exp2019_error_string(ret));
-            return EXIT_FAILURE;
+            fprintf(stderr, "Failed to get connected IC. Error: %s\n",  exp2019_error_string(res));
+            ret = EXIT_FAILURE;
+            goto exit;
         }
 
         fprintf(stderr, "Reading:\n");
@@ -96,8 +101,9 @@ int main(int argc, char *argv[])
         fprintf(stderr, "\n");
         if (ret != EXP2019_NO_ERROR)
         {
-            fprintf(stderr, "Failed to read IC. Error: %s\n",  exp2019_error_string(ret));
-            return EXIT_FAILURE;
+            fprintf(stderr, "Failed to read IC. Error: %s\n",  exp2019_error_string(res));
+            ret = EXIT_FAILURE;
+            goto exit;
         }
 
         fprintf(stderr, "Reading done.\n");
@@ -109,8 +115,9 @@ int main(int argc, char *argv[])
         fprintf(stderr, "\n");
         if (ret)
         {
-            fprintf(stderr, "Failed to write IC. Error: %s\n",  exp2019_error_string(ret));
-            return EXIT_FAILURE;
+            fprintf(stderr, "Failed to write IC. Error: %s\n",  exp2019_error_string(res));
+            ret = EXIT_FAILURE;
+            goto exit;
         }
 
         fprintf(stderr, "Writing done.\n");
@@ -121,8 +128,9 @@ int main(int argc, char *argv[])
         ret = exp2019_connected_ic(handle, &chip_id);
         if (ret != EXP2019_NO_ERROR)
         {
-            fprintf(stderr, "Failed to get connected IC. Error: %s\n",  exp2019_error_string(ret));
-            return EXIT_FAILURE;
+            fprintf(stderr, "Failed to get connected IC. Error: %s\n",  exp2019_error_string(res));
+            ret = EXIT_FAILURE;
+            goto exit;
         }
 
         bool is_matched = false;
@@ -132,8 +140,9 @@ int main(int argc, char *argv[])
         fprintf(stderr, "\n");
         if (ret)
         {
-            fprintf(stderr, "Failed to verify IC. Error: %s\n",  exp2019_error_string(ret));
-            return EXIT_FAILURE;
+            fprintf(stderr, "Failed to verify IC. Error: %s\n",  exp2019_error_string(res));
+            ret = EXIT_FAILURE;
+            goto exit;
         }
 
         if (is_matched)
@@ -152,7 +161,8 @@ int main(int argc, char *argv[])
         if (fgets(confirm, sizeof(confirm), stdin) == NULL || (tolower(confirm[0]) != 'y' && tolower(confirm[0]) != 'Y'))
         {
             fprintf(stderr, "Aborted.\n");
-            return EXIT_SUCCESS;
+            goto exit;
+
         }
 
         fprintf(stderr, "Erasing:\n");
@@ -160,8 +170,9 @@ int main(int argc, char *argv[])
         fprintf(stderr, "\n");
         if (ret)
         {
-            fprintf(stderr, "Failed to erase IC. Error: %s\n",  exp2019_error_string(ret));
-            return EXIT_FAILURE;
+            fprintf(stderr, "Failed to erase IC. Error: %s\n",  exp2019_error_string(res));
+            ret = EXIT_FAILURE;
+            goto exit;
         }
 
         fprintf(stderr, "Erasing done.\n");
@@ -170,10 +181,14 @@ int main(int argc, char *argv[])
     {
         fprintf(stderr, "Unknown command: %s\n", argv[1]);
         fprintf(stderr, "Run %s without arguments to see the list of commands.\n", argv[0]);
-        return EXIT_FAILURE;
+        ret = EXIT_FAILURE;
+        goto exit;
     }
+
+exit:
+    exp2019_reset_ic(handle);
 
     exp2019_exit(handle);
 
-    return EXIT_SUCCESS;
+    return ret;
 }

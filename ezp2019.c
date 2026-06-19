@@ -265,7 +265,7 @@ int exp2019_connected_ic(exp2019 handle, uint32_t *chip_id)
         if (res)
         {
             ret = EXP2019_LIBUSB_ERROR;
-            goto exit;
+            goto release;
         }
 
         if (chip_id)
@@ -273,6 +273,7 @@ int exp2019_connected_ic(exp2019 handle, uint32_t *chip_id)
             *chip_id = (data[1] << 16) | (data[2] << 8) | data[3];
         }
 
+release:
         res = libusb_release_interface(dev, 0);
         if (res)
         {
@@ -338,9 +339,10 @@ int exp2019_reset_ic(exp2019 handle)
     {
         ret = EXP2019_LIBUSB_ERROR;
         fprintf(stderr, "Error while sending reset command: %s\n", libusb_strerror(res));
-        goto exit;
+        goto release;
     }
 
+release:
     res = libusb_release_interface(dev, 0);
     if (res)
     {
