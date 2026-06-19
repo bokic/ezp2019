@@ -261,6 +261,18 @@ int exp2019_connected_ic(exp2019 handle, uint32_t *chip_id)
         uint8_t cmd_packet[EZP2019_PACKET_SIZE] = {0, };
         prepare_command_packet(cmd_packet, EZP_CMD_CONNECT, NULL);
 
+        // Issue Connect command twice: the first time to initialize/wake the SPI lines,
+        // and the second time to read the stable JEDEC ID.
+        uint8_t dummy_data[EZP2019_PACKET_SIZE] = {0, };
+        res = exp2019_send_command(dev, cmd_packet, dummy_data);
+        if (res)
+        {
+            ret = EXP2019_LIBUSB_ERROR;
+            goto release;
+        }
+
+        usleep(50000);
+
         res = exp2019_send_command(dev, cmd_packet, data);
         if (res)
         {
