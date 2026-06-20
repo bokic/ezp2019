@@ -89,11 +89,11 @@ set(CHIP_HEADER "${CMAKE_CURRENT_BINARY_DIR}/ezp2019_chips.h")
 add_custom_command(
     OUTPUT "${CHIP_HEADER}"
     COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/ezp2019_gen_header.py"
-            "${CMAKE_CURRENT_SOURCE_DIR}/ezp2019.dat"
+            "${CMAKE_CURRENT_SOURCE_DIR}/ezp2019+.dat"
             -o "${CHIP_HEADER}"
     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ezp2019_gen_header.py"
-            "${CMAKE_CURRENT_SOURCE_DIR}/ezp2019.dat"
-    COMMENT "Generating ezp2019_chips.h from ezp2019.dat"
+            "${CMAKE_CURRENT_SOURCE_DIR}/ezp2019+.dat"
+    COMMENT "Generating ezp2019_chips.h from ezp2019+.dat"
     VERBATIM
 )
 

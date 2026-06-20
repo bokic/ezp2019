@@ -129,10 +129,14 @@ def generate_header(input_bin, output_header):
 
         f.write("typedef enum {\n")
         f.write("    CHIP_ID_UNKNOWN = 0,\n")
+        seen_enums = set()
         for c in chips_data:
             # Create a safe enum name: Replace special chars with underscores
             safe_name = c["name"].replace("-", "_").replace("(", "_").replace(")", "_").replace("@", "_").replace(".", "_").replace(" ", "_")
-            f.write(f"    CHIP_ID_{c['manuf']}_{safe_name},\n")
+            enum_name = f"CHIP_ID_{c['manuf']}_{safe_name}"
+            if enum_name not in seen_enums:
+                f.write(f"    {enum_name},\n")
+                seen_enums.add(enum_name)
         f.write("    CHIP_ID_COUNT\n")
         f.write("} ChipID;\n\n")
 
