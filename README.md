@@ -102,6 +102,17 @@ Erasing the connected IC:
 ```bash
 ./build/ezp2019 erase_ic
 ```
+## EZP2019 in Docker
+
+### Building an image
+To build an image simply clone this repository to your local machine then run:
+```bash
+sudo docker build . -t ezp2019
+```
+**Usage:**
+```bash
+sudo docker run -it --privileged ezp2019 sh
+```
 
 ## Development Tools
 
