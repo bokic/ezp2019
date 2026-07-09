@@ -105,10 +105,12 @@ Erasing the connected IC:
 ## EZP2019 in Docker
 
 ### Building an image
-To build an image simply clone this repository to your local machine then run:
+To build the image and automatically tag the binary with the current git version, run:
 ```bash
-sudo docker build . -t ezp2019
+sudo docker build . -t ezp2019 --build-arg VERSION=$(git describe --tags --abbrev=0)
 ```
+*(If you run without `--build-arg VERSION`, it will default to version `0.0.0-unknown`)*
+
 **Usage:**
 ```bash
 sudo docker run -it --privileged ezp2019 sh

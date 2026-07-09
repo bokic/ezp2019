@@ -1,15 +1,16 @@
 FROM alpine AS build-stage
 
-RUN apk update && apk add build-base cmake python3 libusb-dev gcc pkgconf bash
+ARG VERSION
+ENV VERSION=${VERSION}
+
+RUN apk add --no-cache build-base cmake python3 libusb-dev gcc pkgconf bash
 COPY . /ezp2019
 WORKDIR /ezp2019
-RUN ./build.sh
+RUN ./build.sh && cmake --install build --prefix /install
 
 FROM alpine AS release
-RUN apk update && apk add libusb --no-cache
-COPY --from=build-stage /ezp2019/build/ezp2019 /usr/local/bin/ezp2019
-COPY --from=build-stage /ezp2019/build/libezp2019.so.0.0.0 /usr/local/lib/libezp2019.so.0.0.0
-RUN ln -s /usr/local/lib/libezp2019.so.0.0.0 /usr/local/lib/libezp2019.so
+RUN apk add --no-cache libusb
+COPY --from=build-stage /install/ /usr/local/
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
