@@ -104,14 +104,49 @@ Erasing the connected IC:
 ```
 ## EZP2019 in Docker
 
-### Building an image
-To build the image and automatically tag the binary with the current git version, run:
+Pre-built Docker images are available on Docker Hub at [bokic78/ezp2019](https://hub.docker.com/repository/docker/bokic78/ezp2019).
+
+### Running from Docker Hub
+You can pull the pre-built image and run it directly.
+
+#### 1. Pull the image:
+```bash
+sudo docker pull bokic78/ezp2019:latest
+```
+
+#### 2. Run the interactive shell inside the container:
+```bash
+# Privileged mode is required to access USB devices
+sudo docker run -it --rm --privileged bokic78/ezp2019:latest sh
+```
+
+#### 3. Run utility commands directly:
+The container's entrypoint automatically forwards subcommand arguments directly to `ezp2019`. For example:
+
+* **Check connection:**
+  ```bash
+  sudo docker run --rm --privileged bokic78/ezp2019:latest is_connected
+  ```
+
+* **Read chip content to a file:**
+  ```bash
+  sudo docker run --rm --privileged bokic78/ezp2019:latest read_ic > output.bin
+  ```
+
+* **Write chip content from a local file:**
+  ```bash
+  sudo docker run --rm -i --privileged bokic78/ezp2019:latest write_ic < input.bin
+  ```
+
+### Building a local image
+If you prefer to build the image locally and automatically tag the binary with the current git version, run:
+
 ```bash
 sudo docker build . -t ezp2019 --build-arg VERSION=$(git describe --tags --abbrev=0)
 ```
 *(If you run without `--build-arg VERSION`, it will default to version `0.0.0-unknown`)*
 
-**Usage:**
+**Usage (Local Image):**
 ```bash
 sudo docker run -it --privileged ezp2019 sh
 ```
