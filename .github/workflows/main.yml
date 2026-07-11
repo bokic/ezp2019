@@ -25,5 +25,5 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/your-repo-name:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/your-repo-name:${{ github.sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/ezp2019:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ezp2019:${{ github.sha }}
