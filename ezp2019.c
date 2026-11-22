@@ -475,11 +475,11 @@ int ezp2019_read_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void *c
     }
 
     size_t pagesize = chip->pagesize ? chip->pagesize : EZP2019_READ_SIZE;
-    size_t chunk_buf_size = pagesize > 4096 ? pagesize : 4096;
+    size_t chunk_buf_size = ((pagesize > 4096 ? pagesize : 4096) + 511) & ~(size_t)511;
     uint8_t *data = malloc(chunk_buf_size);
     if (!data) { ret = EZP2019_LIBUSB_ERROR; goto release; }
 
-    for (size_t offset = 0; offset < size; offset += pagesize)
+    for (size_t offset = 0; offset < size; )
     {
         if (abort && *abort)
         {
@@ -490,7 +490,8 @@ int ezp2019_read_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void *c
 
         memset(data, 0, chunk_buf_size);
         int readed = 0;
-        size_t chunk = (size - offset < pagesize) ? (size - offset) : pagesize;
+        size_t remaining = size - offset;
+        size_t chunk = (remaining < pagesize) ? remaining : pagesize;
         size_t transfer_size = (chunk < 512) ? 512 : ((chunk + 511) & ~(size_t)511);
 
         if (callback)
@@ -507,7 +508,15 @@ int ezp2019_read_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void *c
             goto release;
         }
 
-        size_t bytes_to_write = (size_t)readed < chunk ? (size_t)readed : chunk;
+        if (readed <= 0)
+        {
+            ret = EZP2019_LIBUSB_ERROR;
+            fprintf(stderr, "Error: Not all bytes read\n");
+            free(data);
+            goto release;
+        }
+
+        size_t bytes_to_write = ((size_t)readed < remaining) ? (size_t)readed : remaining;
         res = write(fd, data, bytes_to_write);
         if (res < 0)
         {
@@ -517,13 +526,7 @@ int ezp2019_read_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void *c
             goto release;
         }
 
-        if (readed < (int)chunk)
-        {
-            ret = EZP2019_LIBUSB_ERROR;
-            fprintf(stderr, "Error: Not all bytes read\n");
-            free(data);
-            goto release;
-        }
+        offset += bytes_to_write;
     }
     free(data);
 
@@ -694,36 +697,39 @@ int ezp2019_verify_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void 
     if (res) { ret = EZP2019_LIBUSB_ERROR; goto release; }
 
     size_t pagesize = chip->pagesize ? chip->pagesize : EZP2019_READ_SIZE;
-    size_t chunk_buf_size = pagesize > 4096 ? pagesize : 4096;
+    size_t chunk_buf_size = ((pagesize > 4096 ? pagesize : 4096) + 511) & ~(size_t)511;
     uint8_t *ic_data = malloc(chunk_buf_size);
     uint8_t *file_data = malloc(chunk_buf_size);
     if (!ic_data || !file_data) { free(ic_data); free(file_data); ret = EZP2019_LIBUSB_ERROR; goto release; }
 
-    for (size_t offset = 0; offset < size; offset += pagesize)
+    for (size_t offset = 0; offset < size; )
     {
         if (abort && *abort) { ret = EZP2019_ABORTED; free(ic_data); free(file_data); goto release; }
         
         memset(ic_data, 0, chunk_buf_size);
         memset(file_data, 0, chunk_buf_size);
         int readed = 0;
-        size_t chunk = (size - offset < pagesize) ? (size - offset) : pagesize;
+        size_t remaining = size - offset;
+        size_t chunk = (remaining < pagesize) ? remaining : pagesize;
         size_t transfer_size = (chunk < 512) ? 512 : ((chunk + 511) & ~(size_t)511);
         
         res = libusb_bulk_transfer(dev, EP_IN, ic_data, (int)transfer_size, &readed, 5000);
-        if (res || readed < (int)chunk) { ret = EZP2019_LIBUSB_ERROR; free(ic_data); free(file_data); goto release; }
+        if (res || readed <= 0) { ret = EZP2019_LIBUSB_ERROR; free(ic_data); free(file_data); goto release; }
         
-        ssize_t n = read(fd, file_data, chunk);
-        if (n < (ssize_t)chunk)
+        size_t valid = ((size_t)readed < remaining) ? (size_t)readed : remaining;
+        ssize_t n = read(fd, file_data, valid);
+        if (n < (ssize_t)valid)
         {
-            memset(file_data + (n > 0 ? n : 0), 0xFF, chunk - (n > 0 ? n : 0));
+            memset(file_data + (n > 0 ? n : 0), 0xFF, valid - (n > 0 ? n : 0));
         }
 
-        if (memcmp(ic_data, file_data, chunk) != 0)
+        if (memcmp(ic_data, file_data, valid) != 0)
         {
             *is_matched = false;
         }
 
-        if (callback) callback(offset + chunk, size, context);
+        offset += valid;
+        if (callback) callback(offset, size, context);
     }
     free(ic_data);
     free(file_data);
