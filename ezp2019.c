@@ -192,6 +192,20 @@ static int ezp2019_setup_operation(const ezp2019_dev_t *dev, const Chip *chip)
     return ezp2019_send_command(dev, cmd_packet, tmp);
 }
 
+static int ezp2019_enter_4byte_mode(const ezp2019_dev_t *dev)
+{
+    uint8_t cmd_packet[EZP2019_PACKET_SIZE] = {0, };
+    uint8_t result[EZP2019_PACKET_SIZE] = {0, };
+
+    cmd_packet[0] = 0x00;
+    cmd_packet[1] = 0x0B;
+    cmd_packet[2] = 0x03;
+    cmd_packet[3] = 0x01;
+    cmd_packet[4] = 0xB7;
+
+    return ezp2019_send_command(dev, cmd_packet, result);
+}
+
 static int ezp2019_reset_device(const ezp2019_dev_t *dev)
 {
     uint8_t cmd_packet[EZP2019_PACKET_SIZE] = {0, };
@@ -468,6 +482,12 @@ int ezp2019_read_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void *c
         goto release;
     }
 
+    if (size > 0x1000000)
+    {
+        res = ezp2019_enter_4byte_mode(&dev);
+        if (res) { ret = res; goto release; }
+    }
+
     res = ezp2019_trigger_transfer(&dev, 0, true);
     if (res)
     {
@@ -586,6 +606,12 @@ int ezp2019_write_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void *
     res = ezp2019_setup_operation(&dev, chip);
     if (res) { ret = res; goto release; }
 
+    if (size > 0x1000000)
+    {
+        res = ezp2019_enter_4byte_mode(&dev);
+        if (res) { ret = res; goto release; }
+    }
+
     res = ezp2019_trigger_transfer(&dev, 0, false); 
     if (res) { fprintf(stderr, "ezp2019_trigger_transfer failed with %d\n", res); ret = EZP2019_LIBUSB_ERROR; goto release; }
 
@@ -663,6 +689,12 @@ int ezp2019_verify_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void 
 
     res = ezp2019_setup_operation(&dev, chip);
     if (res) { ret = res; goto release; }
+
+    if (size > 0x1000000)
+    {
+        res = ezp2019_enter_4byte_mode(&dev);
+        if (res) { ret = res; goto release; }
+    }
 
     res = ezp2019_trigger_transfer(&dev, 0, true);
     if (res) { ret = EZP2019_LIBUSB_ERROR; goto release; }
