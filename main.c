@@ -47,8 +47,8 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    exp2019 handle = NULL;
-    int res = exp2019_init(&handle);
+    ezp2019 handle = NULL;
+    int res = ezp2019_init(&handle);
     if (res)
     {
         fprintf(stderr, "Failed to initialize EZP2019\n");
@@ -58,10 +58,10 @@ int main(int argc, char *argv[])
     if (strcmp(argv[1], "is_connected") == 0)
     {
         bool connected;
-        res = exp2019_is_connected(handle, &connected);
+        res = ezp2019_is_connected(handle, &connected);
         if (res)
         {
-            fprintf(stderr, "Failed to check if connected. Error: %s\n",  exp2019_error_string(res));
+            fprintf(stderr, "Failed to check if connected. Error: %s\n",  ezp2019_error_string(res));
             ret = EXIT_FAILURE;
             goto exit;
         }
@@ -71,37 +71,37 @@ int main(int argc, char *argv[])
     else if (strcmp(argv[1], "connected_ic") == 0)
     {
         uint32_t chip_id = 0;
-        res = exp2019_connected_ic(handle, &chip_id);
+        res = ezp2019_connected_ic(handle, &chip_id);
         if (res)
         {
-            fprintf(stderr, "Failed to get connected IC. Error: %s\n",  exp2019_error_string(res));
+            fprintf(stderr, "Failed to get connected IC. Error: %s\n",  ezp2019_error_string(res));
             ret = EXIT_FAILURE;
             goto exit;
         }
 
-        const char *manufacturer = exp2019_get_manufacturer_by_id(chip_id);
-        const char *chip_name = exp2019_get_chip_name_by_id(chip_id);
-        const char *chip_type = exp2019_get_chip_type_by_id(chip_id);
+        const char *manufacturer = ezp2019_get_manufacturer_by_id(chip_id);
+        const char *chip_name = ezp2019_get_chip_name_by_id(chip_id);
+        const char *chip_type = ezp2019_get_chip_type_by_id(chip_id);
 
         printf("Chip Info: %s %s (%s)\n", manufacturer, chip_name, chip_type);
     }
     else if (strcmp(argv[1], "read_ic") == 0)
     {
         uint32_t chip_id;
-        res = exp2019_connected_ic(handle, &chip_id);
-        if (res != EXP2019_NO_ERROR)
+        res = ezp2019_connected_ic(handle, &chip_id);
+        if (res != EZP2019_NO_ERROR)
         {
-            fprintf(stderr, "Failed to get connected IC. Error: %s\n",  exp2019_error_string(res));
+            fprintf(stderr, "Failed to get connected IC. Error: %s\n",  ezp2019_error_string(res));
             ret = EXIT_FAILURE;
             goto exit;
         }
 
         fprintf(stderr, "Reading:\n");
-        ret = exp2019_read_ic(handle, STDOUT_FILENO, progress_callback, NULL, &abort_flag);
+        ret = ezp2019_read_ic(handle, STDOUT_FILENO, progress_callback, NULL, &abort_flag);
         fprintf(stderr, "\n");
-        if (ret != EXP2019_NO_ERROR)
+        if (ret != EZP2019_NO_ERROR)
         {
-            fprintf(stderr, "Failed to read IC. Error: %s\n",  exp2019_error_string(res));
+            fprintf(stderr, "Failed to read IC. Error: %s\n",  ezp2019_error_string(res));
             ret = EXIT_FAILURE;
             goto exit;
         }
@@ -111,11 +111,11 @@ int main(int argc, char *argv[])
     else if (strcmp(argv[1], "write_ic") == 0)
     {
         fprintf(stderr, "Writing:\n");
-        ret = exp2019_write_ic(handle, STDIN_FILENO, progress_callback, NULL, &abort_flag);
+        ret = ezp2019_write_ic(handle, STDIN_FILENO, progress_callback, NULL, &abort_flag);
         fprintf(stderr, "\n");
         if (ret)
         {
-            fprintf(stderr, "Failed to write IC. Error: %s\n",  exp2019_error_string(res));
+            fprintf(stderr, "Failed to write IC. Error: %s\n",  ezp2019_error_string(res));
             ret = EXIT_FAILURE;
             goto exit;
         }
@@ -125,10 +125,10 @@ int main(int argc, char *argv[])
     else if (strcmp(argv[1], "verify_ic") == 0)
     {
         uint32_t chip_id;
-        ret = exp2019_connected_ic(handle, &chip_id);
-        if (ret != EXP2019_NO_ERROR)
+        ret = ezp2019_connected_ic(handle, &chip_id);
+        if (ret != EZP2019_NO_ERROR)
         {
-            fprintf(stderr, "Failed to get connected IC. Error: %s\n",  exp2019_error_string(res));
+            fprintf(stderr, "Failed to get connected IC. Error: %s\n",  ezp2019_error_string(res));
             ret = EXIT_FAILURE;
             goto exit;
         }
@@ -136,11 +136,11 @@ int main(int argc, char *argv[])
         bool is_matched = false;
 
         fprintf(stderr, "Verifying:\n");
-        ret = exp2019_verify_ic(handle, STDIN_FILENO, progress_callback, NULL, &abort_flag, &is_matched);
+        ret = ezp2019_verify_ic(handle, STDIN_FILENO, progress_callback, NULL, &abort_flag, &is_matched);
         fprintf(stderr, "\n");
         if (ret)
         {
-            fprintf(stderr, "Failed to verify IC. Error: %s\n",  exp2019_error_string(res));
+            fprintf(stderr, "Failed to verify IC. Error: %s\n",  ezp2019_error_string(res));
             ret = EXIT_FAILURE;
             goto exit;
         }
@@ -166,11 +166,11 @@ int main(int argc, char *argv[])
         }
 
         fprintf(stderr, "Erasing:\n");
-        ret = exp2019_erase_ic(handle, &abort_flag);
+        ret = ezp2019_erase_ic(handle, &abort_flag);
         fprintf(stderr, "\n");
         if (ret)
         {
-            fprintf(stderr, "Failed to erase IC. Error: %s\n",  exp2019_error_string(res));
+            fprintf(stderr, "Failed to erase IC. Error: %s\n",  ezp2019_error_string(res));
             ret = EXIT_FAILURE;
             goto exit;
         }
@@ -186,9 +186,9 @@ int main(int argc, char *argv[])
     }
 
 exit:
-    exp2019_reset_ic(handle);
+    ezp2019_reset_ic(handle);
 
-    exp2019_exit(handle);
+    ezp2019_exit(handle);
 
     return ret;
 }
