@@ -517,13 +517,26 @@ int ezp2019_read_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void *c
         }
 
         size_t bytes_to_write = ((size_t)readed < remaining) ? (size_t)readed : remaining;
-        res = write(fd, data, bytes_to_write);
-        if (res < 0)
+        size_t written_total = 0;
+        while (written_total < bytes_to_write)
         {
-            ret = EZP2019_LIBUSB_ERROR;
-            fprintf(stderr, "Error while writing IC to file descriptor: %s\n", strerror(errno));
-            free(data);
-            goto release;
+            ssize_t w = write(fd, data + written_total, bytes_to_write - written_total);
+            if (w < 0)
+            {
+                if (errno == EINTR) continue;
+                ret = EZP2019_LIBUSB_ERROR;
+                fprintf(stderr, "Error while writing IC to file descriptor: %s\n", strerror(errno));
+                free(data);
+                goto release;
+            }
+            if (w == 0)
+            {
+                ret = EZP2019_LIBUSB_ERROR;
+                fprintf(stderr, "Error while writing IC to file descriptor: short write\n");
+                free(data);
+                goto release;
+            }
+            written_total += (size_t)w;
         }
 
         offset += bytes_to_write;
