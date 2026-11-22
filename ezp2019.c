@@ -616,37 +616,43 @@ int ezp2019_write_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void *
     if (res) { fprintf(stderr, "ezp2019_trigger_transfer failed with %d\n", res); ret = EZP2019_LIBUSB_ERROR; goto release; }
 
     size_t pagesize = chip->pagesize ? chip->pagesize : EZP2019_READ_SIZE;
-    size_t chunk_buf_size = pagesize > 4096 ? pagesize : 4096;
+    size_t write_chunk = (pagesize < 0x40) ? 0x40 : pagesize;
+    size_t chunk_buf_size = write_chunk > 4096 ? write_chunk : 4096;
     uint8_t *data = malloc(chunk_buf_size);
     if (!data) { ret = EZP2019_LIBUSB_ERROR; goto release; }
 
-    for (size_t offset = 0; offset < size; offset += pagesize)
+    for (size_t offset = 0; offset < size; offset += write_chunk)
     {
         if (abort && *abort) { ret = EZP2019_ABORTED; free(data); goto release; }
         
-        memset(data, 0, chunk_buf_size);
-        size_t chunk_len = (size - offset < pagesize) ? (size - offset) : pagesize;
-        ssize_t n = read(fd, data, chunk_len);
-        
-        if (n < (ssize_t)chunk_len)
+        memset(data, 0xFF, chunk_buf_size);
+        size_t file_wanted = (size - offset < write_chunk) ? (size - offset) : write_chunk;
+        size_t read_total = 0;
+        while (read_total < file_wanted)
         {
-            memset(data + (n > 0 ? n : 0), 0xFF, chunk_len - (n > 0 ? n : 0));
+            ssize_t n = read(fd, data + read_total, file_wanted - read_total);
+            if (n < 0)
+            {
+                if (errno == EINTR) continue;
+                break;
+            }
+            if (n == 0) break;
+            read_total += (size_t)n;
         }
         
         int written = 0;
-        res = libusb_bulk_transfer(dev.handle, dev.ep_data_out, data, (int)chunk_len, &written, 5000);
+        res = libusb_bulk_transfer(dev.handle, dev.ep_data_out, data, (int)write_chunk, &written, 5000);
         if (res) { fprintf(stderr, "libusb_bulk_transfer loop failed at offset %zu with res %d (%s)\n", offset, res, libusb_strerror(res)); ret = EZP2019_LIBUSB_ERROR; free(data); goto release; }
-        if (callback) callback(offset + written, size, context);
+        size_t progress = offset + (size_t)written;
+        if (progress > size) progress = size;
+        if (callback) callback(progress, size, context);
     }
     free(data);
 
-    if (chip->chip_type && strcmp(chip->chip_type, "SPI_FLASH") == 0)
+    if ((chip->proto_enum_cfg & 0xFF) == EZP_PROTO_SPI)
     {
         usleep(100000);
     }
-
-    res = ezp2019_wait_ready(&dev, chip, abort);
-    if (res) { fprintf(stderr, "Hardware poll waiting failed at write completion\n"); ret = EZP2019_COMMAND_ERROR; goto release; }
 
 release:
     ezp2019_reset_device(&dev);
