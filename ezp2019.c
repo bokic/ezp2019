@@ -13,6 +13,28 @@
 
 #define EZP2019_VID 0x1fc8
 #define EZP2019_PID 0x310b
+#define EZP2019_PLUS_PID 0x310c
+
+static const uint16_t ezp2019_pids[] = {
+    EZP2019_PID,
+    EZP2019_PLUS_PID,
+};
+
+/* Open the first connected EZP2019/EZP2019+ device, preserving EACCES on permission errors. */
+static libusb_device_handle *ezp2019_open_device(libusb_context *handle)
+{
+    for (size_t i = 0; i < sizeof(ezp2019_pids) / sizeof(ezp2019_pids[0]); i++)
+    {
+        errno = 0;
+        libusb_device_handle *dev = libusb_open_device_with_vid_pid(handle, EZP2019_VID, ezp2019_pids[i]);
+        if (dev || errno == EACCES)
+        {
+            return dev;
+        }
+    }
+
+    return NULL;
+}
 
 #define EZP2019_PACKET_SIZE 0x40
 
@@ -200,7 +222,7 @@ int exp2019_is_connected(exp2019 handle, bool *connected)
 
     errno = 0;
 
-    dev = libusb_open_device_with_vid_pid(handle, EZP2019_VID, EZP2019_PID);
+    dev = ezp2019_open_device(handle);
     if (dev)
     {
         libusb_close(dev); dev = NULL;
@@ -233,7 +255,7 @@ int exp2019_connected_ic(exp2019 handle, uint32_t *chip_id)
         return EXP2019_INVALID_ARGUMENT;
     }
 
-    dev = libusb_open_device_with_vid_pid(handle, EZP2019_VID, EZP2019_PID);
+    dev = ezp2019_open_device(handle);
     if (dev)
     {
         libusb_set_auto_detach_kernel_driver(dev, 1);
@@ -326,7 +348,7 @@ int exp2019_reset_ic(exp2019 handle)
         return EXP2019_INVALID_ARGUMENT;
     }
 
-    dev = libusb_open_device_with_vid_pid(handle, EZP2019_VID, EZP2019_PID);
+    dev = ezp2019_open_device(handle);
     if (!dev)
     {
         ret = (errno == EACCES) ? EXP2019_LIBUSB_PERMISSION_DENIED : EXP2019_NOT_CONNECTED;
@@ -404,7 +426,7 @@ int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *c
 
     size_t size = chip->size;
 
-    dev = libusb_open_device_with_vid_pid(handle, EZP2019_VID, EZP2019_PID);
+    dev = ezp2019_open_device(handle);
     if (!dev)
     {
         ret = (errno == EACCES) ? EXP2019_LIBUSB_PERMISSION_DENIED : EXP2019_NOT_CONNECTED;
@@ -531,7 +553,7 @@ int exp2019_write_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *
 
     size_t size = chip->size;
 
-    dev = libusb_open_device_with_vid_pid(handle, EZP2019_VID, EZP2019_PID);
+    dev = ezp2019_open_device(handle);
     if (!dev) return (errno == EACCES) ? EXP2019_LIBUSB_PERMISSION_DENIED : EXP2019_NOT_CONNECTED;
     libusb_set_auto_detach_kernel_driver(dev, 1);
 
@@ -626,7 +648,7 @@ int exp2019_verify_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void 
 
     size_t size = chip->size;
 
-    dev = libusb_open_device_with_vid_pid(handle, EZP2019_VID, EZP2019_PID);
+    dev = ezp2019_open_device(handle);
     if (!dev) return (errno == EACCES) ? EXP2019_LIBUSB_PERMISSION_DENIED : EXP2019_NOT_CONNECTED;
     libusb_set_auto_detach_kernel_driver(dev, 1);
 
@@ -717,7 +739,7 @@ int exp2019_erase_ic(exp2019 handle, volatile bool *abort)
     const Chip *chip = exp2019_find_ic_by_id(chip_id);
     if (!chip) return EXP2019_COMMAND_ERROR;
 
-    dev = libusb_open_device_with_vid_pid(handle, EZP2019_VID, EZP2019_PID);
+    dev = ezp2019_open_device(handle);
     if (!dev) return (errno == EACCES) ? EXP2019_LIBUSB_PERMISSION_DENIED : EXP2019_NOT_CONNECTED;
     libusb_set_auto_detach_kernel_driver(dev, 1);
 

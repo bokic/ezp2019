@@ -1,4 +1,6 @@
-# EZP2019 USB Programmer Utility [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/bokic/ezp2019)
+# EZP2019 USB Programmer Utility [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/bokic/ezp2019) [![Docker Pulls](https://img.shields.io/docker/pulls/bokic78/ezp2019)](https://hub.docker.com/repository/docker/bokic78/ezp2019)
+
+Docker image: `docker pull bokic78/ezp2019`
 
 ![EZP2019 USB Programmer](img/ezp2019.jpg)
 
@@ -14,9 +16,9 @@ A Linux-based driver and command-line utility for the **EZP2019 High-Speed USB P
 
 ## Supported Hardware
 
-- **Device**: EZP2019 USB Programmer
+- **Device**: EZP2019 / EZP2019+ USB Programmer
 - **USB VID**: `0x1fc8`
-- **USB PID**: `0x310b`
+- **USB PID**: `0x310b`, `0x310c`
 
 ## Dependencies
 
@@ -47,9 +49,9 @@ This will create a `build` directory containing the `ezp2019` executable and a `
 
 By default, most Linux distributions restrict access to USB devices for non-root users. To allow all users to access the EZP2019 programmer without `sudo`, you can install a udev rule:
 
-1. **Create the rule file:**
+1. **Create the rule file (or copy `99-ezp2019.rules`):**
    ```bash
-   sudo bash -c 'echo "SUBSYSTEM==\"usb\", ATTR{idVendor}==\"1fc8\", ATTR{idProduct}==\"310b\", MODE=\"0666\"" > /etc/udev/rules.d/99-ezp2019.rules'
+   sudo cp 99-ezp2019.rules /etc/udev/rules.d/99-ezp2019.rules
    ```
 
 2. **Reload and apply the rules:**
