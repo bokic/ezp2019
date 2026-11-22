@@ -55,6 +55,8 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
+    bool should_reset = false;
+
     if (strcmp(argv[1], "is_connected") == 0)
     {
         bool connected;
@@ -96,12 +98,13 @@ int main(int argc, char *argv[])
             goto exit;
         }
 
+        should_reset = true;
         fprintf(stderr, "Reading:\n");
         ret = ezp2019_read_ic(handle, STDOUT_FILENO, progress_callback, NULL, &abort_flag);
         fprintf(stderr, "\n");
         if (ret != EZP2019_NO_ERROR)
         {
-            fprintf(stderr, "Failed to read IC. Error: %s\n",  ezp2019_error_string(res));
+            fprintf(stderr, "Failed to read IC. Error: %s\n", ezp2019_error_string(ret));
             ret = EXIT_FAILURE;
             goto exit;
         }
@@ -110,12 +113,13 @@ int main(int argc, char *argv[])
     }
     else if (strcmp(argv[1], "write_ic") == 0)
     {
+        should_reset = true;
         fprintf(stderr, "Writing:\n");
         ret = ezp2019_write_ic(handle, STDIN_FILENO, progress_callback, NULL, &abort_flag);
         fprintf(stderr, "\n");
         if (ret)
         {
-            fprintf(stderr, "Failed to write IC. Error: %s\n",  ezp2019_error_string(res));
+            fprintf(stderr, "Failed to write IC. Error: %s\n", ezp2019_error_string(ret));
             ret = EXIT_FAILURE;
             goto exit;
         }
@@ -128,19 +132,20 @@ int main(int argc, char *argv[])
         ret = ezp2019_connected_ic(handle, &chip_id);
         if (ret != EZP2019_NO_ERROR)
         {
-            fprintf(stderr, "Failed to get connected IC. Error: %s\n",  ezp2019_error_string(res));
+            fprintf(stderr, "Failed to get connected IC. Error: %s\n", ezp2019_error_string(ret));
             ret = EXIT_FAILURE;
             goto exit;
         }
 
         bool is_matched = false;
+        should_reset = true;
 
         fprintf(stderr, "Verifying:\n");
         ret = ezp2019_verify_ic(handle, STDIN_FILENO, progress_callback, NULL, &abort_flag, &is_matched);
         fprintf(stderr, "\n");
         if (ret)
         {
-            fprintf(stderr, "Failed to verify IC. Error: %s\n",  ezp2019_error_string(res));
+            fprintf(stderr, "Failed to verify IC. Error: %s\n", ezp2019_error_string(ret));
             ret = EXIT_FAILURE;
             goto exit;
         }
@@ -165,12 +170,13 @@ int main(int argc, char *argv[])
 
         }
 
+        should_reset = true;
         fprintf(stderr, "Erasing:\n");
         ret = ezp2019_erase_ic(handle, &abort_flag);
         fprintf(stderr, "\n");
         if (ret)
         {
-            fprintf(stderr, "Failed to erase IC. Error: %s\n",  ezp2019_error_string(res));
+            fprintf(stderr, "Failed to erase IC. Error: %s\n", ezp2019_error_string(ret));
             ret = EXIT_FAILURE;
             goto exit;
         }
@@ -186,7 +192,10 @@ int main(int argc, char *argv[])
     }
 
 exit:
-    ezp2019_reset_ic(handle);
+    if (should_reset)
+    {
+        ezp2019_reset_ic(handle);
+    }
 
     ezp2019_exit(handle);
 
