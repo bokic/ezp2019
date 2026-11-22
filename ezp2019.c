@@ -183,6 +183,15 @@ static int ezp2019_trigger_transfer(const ezp2019_dev_t *dev, uint32_t address, 
     return ezp2019_send_command(dev, cmd_packet, read_mode ? result : NULL);
 }
 
+static int ezp2019_setup_operation(const ezp2019_dev_t *dev, const Chip *chip)
+{
+    uint8_t cmd_packet[EZP2019_PACKET_SIZE] = {0, };
+    uint8_t tmp[EZP2019_PACKET_SIZE] = {0, };
+
+    prepare_command_packet(cmd_packet, EZP_CMD_READ_SPI, chip, dev->needs_bswap);
+    return ezp2019_send_command(dev, cmd_packet, tmp);
+}
+
 static int ezp2019_reset_device(const ezp2019_dev_t *dev)
 {
     uint8_t cmd_packet[EZP2019_PACKET_SIZE] = {0, };
@@ -418,7 +427,6 @@ int ezp2019_read_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void *c
 {
     int ret = EZP2019_NO_ERROR;
     ezp2019_dev_t dev = {0};
-    uint8_t tmp[EZP2019_PACKET_SIZE] = {0, };
     uint32_t chip_id = 0;
     int res = 0;
 
@@ -452,20 +460,7 @@ int ezp2019_read_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void *c
     ezp2019_reset_device(&dev);
     usleep(100000);
 
-    uint8_t cmd_id = EZP_CMD_READ_SPI;
-    if (chip->chip_type && (strcmp(chip->chip_type, "24_EEPROM") == 0 || strcmp(chip->chip_type, "93_EEPROM") == 0))
-    {
-        cmd_id = EZP_CMD_READ_EE;
-    }
-
-    uint8_t cmd_packet[EZP2019_PACKET_SIZE] = {0, };
-
-    prepare_command_packet(cmd_packet, EZP_CMD_CONNECT, chip, dev.needs_bswap);
-    res = ezp2019_send_command(&dev, cmd_packet, tmp);
-    if (res) { ret = EZP2019_LIBUSB_ERROR; goto release; }
-
-    prepare_command_packet(cmd_packet, cmd_id, chip, dev.needs_bswap);
-    res = ezp2019_send_command(&dev, cmd_packet, tmp);
+    res = ezp2019_setup_operation(&dev, chip);
     if (res)
     {
         ret = res;
@@ -569,7 +564,6 @@ int ezp2019_write_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void *
 {
     int ret = EZP2019_NO_ERROR;
     ezp2019_dev_t dev = {0};
-    uint8_t tmp[EZP2019_PACKET_SIZE] = {0, };
     uint32_t chip_id = 0;
     int res = 0;
 
@@ -589,21 +583,8 @@ int ezp2019_write_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void *
     ezp2019_reset_device(&dev);
     usleep(100000);
 
-    uint8_t cmd_id = EZP_CMD_READ_SPI; 
-    if (chip->chip_type && (strcmp(chip->chip_type, "24_EEPROM") == 0 || strcmp(chip->chip_type, "93_EEPROM") == 0))
-    {
-        cmd_id = EZP_CMD_READ_EE;
-    }
-
-    uint8_t cmd_packet[EZP2019_PACKET_SIZE] = {0, };
-
-    prepare_command_packet(cmd_packet, EZP_CMD_CONNECT, chip, dev.needs_bswap);
-    res = ezp2019_send_command(&dev, cmd_packet, tmp);
-    if (res) { ret = EZP2019_LIBUSB_ERROR; goto release; }
-
-    prepare_command_packet(cmd_packet, cmd_id, chip, dev.needs_bswap);
-    res = ezp2019_send_command(&dev, cmd_packet, tmp);
-    if (res) { ret = EZP2019_LIBUSB_ERROR; goto release; }
+    res = ezp2019_setup_operation(&dev, chip);
+    if (res) { ret = res; goto release; }
 
     res = ezp2019_trigger_transfer(&dev, 0, false); 
     if (res) { fprintf(stderr, "ezp2019_trigger_transfer failed with %d\n", res); ret = EZP2019_LIBUSB_ERROR; goto release; }
@@ -659,7 +640,6 @@ int ezp2019_verify_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void 
 {
     int ret = EZP2019_NO_ERROR;
     ezp2019_dev_t dev = {0};
-    uint8_t tmp[EZP2019_PACKET_SIZE] = {0, };
     uint32_t chip_id = 0;
     int res = 0;
 
@@ -681,21 +661,8 @@ int ezp2019_verify_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void 
     ezp2019_reset_device(&dev);
     usleep(100000);
 
-    uint8_t cmd_id = EZP_CMD_READ_SPI; 
-    if (chip->chip_type && (strcmp(chip->chip_type, "24_EEPROM") == 0 || strcmp(chip->chip_type, "93_EEPROM") == 0))
-    {
-        cmd_id = EZP_CMD_READ_EE;
-    }
-
-    uint8_t cmd_packet[EZP2019_PACKET_SIZE] = {0, };
-
-    prepare_command_packet(cmd_packet, EZP_CMD_CONNECT, chip, dev.needs_bswap);
-    res = ezp2019_send_command(&dev, cmd_packet, tmp);
-    if (res) { ret = EZP2019_LIBUSB_ERROR; goto release; }
-
-    prepare_command_packet(cmd_packet, cmd_id, chip, dev.needs_bswap);
-    res = ezp2019_send_command(&dev, cmd_packet, tmp);
-    if (res) { ret = EZP2019_LIBUSB_ERROR; goto release; }
+    res = ezp2019_setup_operation(&dev, chip);
+    if (res) { ret = res; goto release; }
 
     res = ezp2019_trigger_transfer(&dev, 0, true);
     if (res) { ret = EZP2019_LIBUSB_ERROR; goto release; }
@@ -758,8 +725,6 @@ int ezp2019_erase_ic(ezp2019 handle, const volatile bool *abort)
     ezp2019_dev_t dev = {0};
     uint32_t chip_id = 0;
     int res = 0;
-    uint8_t tmp[EZP2019_PACKET_SIZE] = {0, };
-    uint8_t tmp2[EZP2019_PACKET_SIZE] = {0, };
 
     if (handle == NULL) return EZP2019_INVALID_ARGUMENT;
 
@@ -775,21 +740,8 @@ int ezp2019_erase_ic(ezp2019 handle, const volatile bool *abort)
     ezp2019_reset_device(&dev);
     usleep(100000);
 
-    uint8_t cmd_id = EZP_CMD_READ_SPI;
-    if (chip->chip_type && (strcmp(chip->chip_type, "24_EEPROM") == 0 || strcmp(chip->chip_type, "93_EEPROM") == 0))
-    {
-        cmd_id = EZP_CMD_READ_EE;
-    }
-
-    uint8_t probe_packet[EZP2019_PACKET_SIZE] = {0, };
-    prepare_command_packet(probe_packet, EZP_CMD_CONNECT, chip, dev.needs_bswap);
-    res = ezp2019_send_command(&dev, probe_packet, tmp2);
-    if (res) { ret = EZP2019_LIBUSB_ERROR; goto release; }
-
-    uint8_t setup_packet[EZP2019_PACKET_SIZE] = {0, };
-    prepare_command_packet(setup_packet, cmd_id, chip, dev.needs_bswap);
-    res = ezp2019_send_command(&dev, setup_packet, tmp);
-    if (res) { ret = EZP2019_LIBUSB_ERROR; goto release; }
+    res = ezp2019_setup_operation(&dev, chip);
+    if (res) { ret = res; goto release; }
 
     uint8_t erase_packet[EZP2019_PACKET_SIZE] = {0, };
     erase_packet[0] = 0x01;
