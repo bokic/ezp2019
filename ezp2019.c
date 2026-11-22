@@ -52,7 +52,7 @@ typedef libusb_context *exp2019;
 
 static const Chip *exp2019_find_ic_by_id(uint32_t chip_id)
 {
-    for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
+    for (size_t i = 0; i < ezp2019_num_chips; i++)
     {
         if (ezp2019_chips[i].chip_id == chip_id)
         {
@@ -70,14 +70,14 @@ static void prepare_command_packet(uint8_t packet[EZP2019_PACKET_SIZE], uint8_t 
     
     if (chip)
     {
-        packet[2] = chip->protocol_enum_cfg & 0xFF;
-        packet[3] = (chip->protocol_enum_cfg >> 8) & 0xFF;
+        packet[2] = chip->proto_enum_cfg & 0xFF;
+        packet[3] = (chip->proto_enum_cfg >> 8) & 0xFF;
 
         packet[4] = (chip->pagesize >> 8) & 0xFF;
         packet[5] = chip->pagesize & 0xFF;
         
-        packet[6] = (chip->timeout_retries >> 8) & 0xFF;
-        packet[7] = chip->timeout_retries & 0xFF;
+        packet[6] = (chip->timing_delay >> 8) & 0xFF;
+        packet[7] = chip->timing_delay & 0xFF;
         
         packet[8] = (chip->size >> 24) & 0xFF;
         packet[9] = (chip->size >> 16) & 0xFF;
@@ -94,13 +94,13 @@ static void prepare_command_packet(uint8_t packet[EZP2019_PACKET_SIZE], uint8_t 
 }
 
 
-static int exp2019_send_command(void *handle, const uint8_t command[EZP2019_PACKET_SIZE], uint8_t result[EZP2019_PACKET_SIZE])
+static int exp2019_send_command(libusb_device_handle *handle, const uint8_t command[EZP2019_PACKET_SIZE], uint8_t result[EZP2019_PACKET_SIZE])
 {
     int sent = 0;
     int res = 0;
     int received = 0;
 
-    res = libusb_bulk_transfer(handle, EP_CMD_OUT, (uint8_t *)command, EZP2019_PACKET_SIZE, &sent, 5000);
+    res = libusb_bulk_transfer(handle, EP_CMD_OUT, (unsigned char *)(uintptr_t)command, EZP2019_PACKET_SIZE, &sent, 5000);
     if (res || sent != EZP2019_PACKET_SIZE)
     {
         return EXP2019_LIBUSB_ERROR;
@@ -132,6 +132,7 @@ static int exp2019_trigger_transfer(libusb_device_handle *dev, uint32_t address,
     
     return exp2019_send_command(dev, cmd_packet, read_mode ? result : NULL);
 }
+
 static int exp2019_reset_device(libusb_device_handle *dev)
 {
     uint8_t cmd_packet[EZP2019_PACKET_SIZE] = {0, };
@@ -141,12 +142,12 @@ static int exp2019_reset_device(libusb_device_handle *dev)
 }
 
 
-static int exp2019_wait_ready(void *handle, const Chip *chip, volatile bool *abort)
+static int exp2019_wait_ready(libusb_device_handle *handle, const Chip *chip, volatile bool *abort)
 {
     uint8_t cmd_packet[EZP2019_PACKET_SIZE] = {0, };
     int res = 0;
     
-    int retries = chip->timeout_retries;
+    int retries = chip->timing_delay ? chip->timing_delay : 100;
 
     memset(cmd_packet, 0, EZP2019_PACKET_SIZE);
     cmd_packet[1] = EZP_CMD_STATUS;
@@ -824,117 +825,64 @@ uint32_t exp2019_get_ic_id(size_t index)
 
 const char *exp2019_get_chip_type_by_id(uint32_t chip_id)
 {
-    for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
-    {
-        if (ezp2019_chips[i].chip_id == chip_id)
-        {
-            return ezp2019_chips[i].chip_type;
-        }
-    }
-
-    return NULL;
+    const Chip *chip = exp2019_find_ic_by_id(chip_id);
+    return chip ? chip->chip_type : NULL;
 }
 
 const char *exp2019_get_manufacturer_by_id(uint32_t chip_id)
 {
-    for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
-    {
-        if (ezp2019_chips[i].chip_id == chip_id)
-        {
-            return ezp2019_chips[i].manufacturer;
-        }
-    }
-
-    return NULL;
+    const Chip *chip = exp2019_find_ic_by_id(chip_id);
+    return chip ? chip->manufacturer : NULL;
 }
 
 const char *exp2019_get_chip_name_by_id(uint32_t chip_id)
 {
-    for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
-    {
-        if (ezp2019_chips[i].chip_id == chip_id)
-        {
-            return ezp2019_chips[i].chip_name;
-        }
-    }
-
-    return NULL;
+    const Chip *chip = exp2019_find_ic_by_id(chip_id);
+    return chip ? chip->chip_name : NULL;
 }
 
 uint32_t exp2019_get_chip_size_by_id(uint32_t chip_id)
 {
-    for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
-    {
-        if (ezp2019_chips[i].chip_id == chip_id)
-        {
-            return ezp2019_chips[i].size;
-        }
-    }
-
-    return 0;
+    const Chip *chip = exp2019_find_ic_by_id(chip_id);
+    return chip ? chip->size : 0;
 }
 
 uint16_t exp2019_get_chip_pagesize_by_id(uint32_t chip_id)
 {
-    for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
-    {
-        if (ezp2019_chips[i].chip_id == chip_id)
-        {
-            return ezp2019_chips[i].pagesize;
-        }
-    }
-
-    return 0;
+    const Chip *chip = exp2019_find_ic_by_id(chip_id);
+    return chip ? chip->pagesize : 0;
 }
 
 uint16_t exp2019_get_chip_protocol_enum_cfg_by_id(uint32_t chip_id)
 {
-    for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
-    {
-        if (ezp2019_chips[i].chip_id == chip_id)
-        {
-            return ezp2019_chips[i].protocol_enum_cfg;
-        }
-    }
+    const Chip *chip = exp2019_find_ic_by_id(chip_id);
+    return chip ? chip->proto_enum_cfg : 0;
+}
 
-    return 0;
+uint16_t exp2019_get_chip_protocol_variant_by_id(uint32_t chip_id)
+{
+    const Chip *chip = exp2019_find_ic_by_id(chip_id);
+    return chip ? chip->protocol_variant : 0;
+}
+
+uint16_t exp2019_get_chip_timing_delay_by_id(uint32_t chip_id)
+{
+    const Chip *chip = exp2019_find_ic_by_id(chip_id);
+    return chip ? chip->timing_delay : 0;
 }
 
 uint16_t exp2019_get_chip_timeout_retries_by_id(uint32_t chip_id)
 {
-    for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
-    {
-        if (ezp2019_chips[i].chip_id == chip_id)
-        {
-            return ezp2019_chips[i].timeout_retries;
-        }
-    }
-
-    return 0;
+    return exp2019_get_chip_timing_delay_by_id(chip_id);
 }
 
 uint16_t exp2019_get_chip_unknown_delay_by_id(uint32_t chip_id)
 {
-    for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
-    {
-        if (ezp2019_chips[i].chip_id == chip_id)
-        {
-            return ezp2019_chips[i].unknown_delay;
-        }
-    }
-
-    return 0;
+    return exp2019_get_chip_protocol_variant_by_id(chip_id);
 }
 
 uint32_t exp2019_get_chip_flags_by_id(uint32_t chip_id)
 {
-    for (size_t i = 0; i < sizeof(ezp2019_chips) / sizeof(ezp2019_chips[0]); i++)
-    {
-        if (ezp2019_chips[i].chip_id == chip_id)
-        {
-            return ezp2019_chips[i].flags;
-        }
-    }
-
-    return 0;
+    const Chip *chip = exp2019_find_ic_by_id(chip_id);
+    return chip ? chip->flags : 0;
 }

@@ -17,7 +17,16 @@ def generate_header(input_bin, output_header):
                     break
                 
                 # binary unpack
-                (raw_name, chip_id, size, pagesize, proto_enum_cfg, timeout_retries, unknown_delay, flags) = struct.unpack(struct_format, data)
+                # binary unpack:
+                # 0x00-0x2F: 48s Name string
+                # 0x30-0x33: I   JEDEC Chip ID
+                # 0x34-0x37: I   Size/Capacity
+                # 0x38-0x39: H   Page Size (e.g. 256 = 0x0100)
+                # 0x3A-0x3B: H   Protocol Enum & Config Flags (proto_enum_cfg)
+                # 0x3C-0x3D: H   Timing Delay (e.g. 1000 us = 0x03E8)
+                # 0x3E-0x3F: H   Protocol Variant
+                # 0x40-0x43: I   Operation Mask (flags)
+                (raw_name, chip_id, size, pagesize, proto_enum_cfg, timing_delay, protocol_variant, flags) = struct.unpack(struct_format, data)
                 
                 # decode name and normalize full-width characters
                 name_str = raw_name.decode("gb18030").split("\0")[0]
@@ -35,8 +44,8 @@ def generate_header(input_bin, output_header):
                     "size": size,
                     "pagesize": pagesize,
                     "proto_enum_cfg": proto_enum_cfg,
-                    "timeout_retries": timeout_retries,
-                    "unknown_delay": unknown_delay,
+                    "timing_delay": timing_delay,
+                    "protocol_variant": protocol_variant,
                     "flags": flags
                 })
 
@@ -72,8 +81,8 @@ def generate_header(input_bin, output_header):
             f'0x{c["size"]:08X},',
             f'0x{c["pagesize"]:04X},',
             f'0x{c["proto_enum_cfg"]:04X},',
-            f'{c["timeout_retries"]},',
-            f'{c["unknown_delay"]},',
+            f'0x{c["timing_delay"]:04X},',
+            f'{c["protocol_variant"]},',
             f'{op_mask_str}'
         ])
 
@@ -143,9 +152,9 @@ def generate_header(input_bin, output_header):
         f.write("    uint32_t chip_id;\n")
         f.write("    uint32_t size;\n")
         f.write("    uint16_t pagesize;\n")
-        f.write("    uint16_t protocol_enum_cfg;\n")
-        f.write("    uint16_t timeout_retries;\n")
-        f.write("    uint16_t unknown_delay;\n")
+        f.write("    uint16_t proto_enum_cfg;\n")
+        f.write("    uint16_t timing_delay;\n")
+        f.write("    uint16_t protocol_variant;\n")
         f.write("    uint32_t flags;\n")
         f.write("} Chip;\n\n")
         f.write("_Static_assert(sizeof(Chip) == 48, \"Chip struct must be exactly 48 bytes\");\n\n")
