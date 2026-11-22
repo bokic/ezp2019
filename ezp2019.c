@@ -781,16 +781,40 @@ int ezp2019_erase_ic(ezp2019 handle, const volatile bool *abort)
     res = ezp2019_setup_operation(&dev, chip);
     if (res) { ret = res; goto release; }
 
+    uint8_t proto = chip->proto_enum_cfg & 0xFF;
     uint8_t erase_packet[EZP2019_PACKET_SIZE] = {0, };
     erase_packet[0] = 0x01;
     erase_packet[1] = 0x02;
-    put_u16(&erase_packet[0x1A], 0x8000, dev.needs_bswap);
 
-    res = ezp2019_send_command(&dev, erase_packet, NULL);
-    if (res) { ret = EZP2019_LIBUSB_ERROR; goto release; }
+    if (proto == EZP_PROTO_NONE)
+    {
+        put_u16(&erase_packet[0x1A], 0x8000, dev.needs_bswap);
+        res = ezp2019_send_command(&dev, erase_packet, NULL);
+        if (res) { ret = res; goto release; }
 
-    usleep(50000);
-    ret = ezp2019_wait_ready(&dev, chip, abort);
+        ret = ezp2019_wait_ready(&dev, chip, abort);
+    }
+    else if (proto == EZP_PROTO_SPI)
+    {
+        size_t step = chip->pagesize ? chip->pagesize : EZP2019_READ_SIZE;
+        for (uint32_t addr = 0; addr < chip->size; addr += (uint32_t)step)
+        {
+            if (abort && *abort)
+            {
+                ret = EZP2019_ABORTED;
+                goto release;
+            }
+            put_u16(&erase_packet[0x1A], (uint16_t)addr, dev.needs_bswap);
+            res = ezp2019_send_command(&dev, erase_packet, NULL);
+            if (res) { ret = res; goto release; }
+        }
+    }
+    else if (proto == EZP_PROTO_I2C)
+    {
+        put_u16(&erase_packet[0x1A], chip->timing_delay, dev.needs_bswap);
+        res = ezp2019_send_command(&dev, erase_packet, NULL);
+        if (res) { ret = res; goto release; }
+    }
 
 release:
     ezp2019_reset_device(&dev);
