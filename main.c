@@ -24,7 +24,7 @@ static void progress_callback(size_t processed, size_t total, void *context)
 
     size_t percentage = (processed * 100) / total;
 
-    fprintf(stderr, "\rProgress: %lu / %lu (%lu%%)", processed, total, percentage);
+    fprintf(stderr, "\rProgress: %zu / %zu (%zu%%)", processed, total, percentage);
     fflush(stderr);
 }
 
