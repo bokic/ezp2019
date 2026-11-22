@@ -9,6 +9,7 @@
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 
 #define EZP2019_VID 0x1fc8
@@ -476,46 +477,57 @@ int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *c
     }
 
     size_t pagesize = chip->pagesize ? chip->pagesize : EZP2019_READ_SIZE;
+    size_t chunk_buf_size = pagesize > 4096 ? pagesize : 4096;
+    uint8_t *data = malloc(chunk_buf_size);
+    if (!data) { ret = EXP2019_LIBUSB_ERROR; goto release; }
+
     for (size_t offset = 0; offset < size; offset += pagesize)
     {
         if (abort && *abort)
         {
             ret = EXP2019_ABORTED;
+            free(data);
             goto release;
         }
 
-        uint8_t data[256] = {0, };
+        memset(data, 0, chunk_buf_size);
         int readed = 0;
         size_t chunk = (size - offset < pagesize) ? (size - offset) : pagesize;
+        size_t transfer_size = (chunk < 512) ? 512 : ((chunk + 511) & ~(size_t)511);
 
         if (callback)
         {
             callback(offset, size, context);
         }
 
-        res = libusb_bulk_transfer(dev, EP_IN, data, (int)chunk, &readed, 5000);
+        res = libusb_bulk_transfer(dev, EP_IN, data, (int)transfer_size, &readed, 5000);
         if (res)
         {
             ret = EXP2019_LIBUSB_ERROR;
             fprintf(stderr, "Error while reading IC: %s\n", libusb_strerror(res));
+            free(data);
             goto release;
         }
 
-        res = write(fd, data, (size_t)readed);
+        size_t bytes_to_write = (size_t)readed < chunk ? (size_t)readed : chunk;
+        res = write(fd, data, bytes_to_write);
         if (res < 0)
         {
             ret = EXP2019_LIBUSB_ERROR;
             fprintf(stderr, "Error while writing IC to file descriptor: %s\n", strerror(errno));
+            free(data);
             goto release;
         }
 
-        if (readed != (int)chunk)
+        if (readed < (int)chunk)
         {
             ret = EXP2019_LIBUSB_ERROR;
             fprintf(stderr, "Error: Not all bytes read\n");
+            free(data);
             goto release;
         }
     }
+    free(data);
 
 release:
     exp2019_reset_device(dev);
@@ -584,11 +596,15 @@ int exp2019_write_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *
     if (res) { fprintf(stderr, "exp2019_trigger_transfer failed with %d\n", res); ret = EXP2019_LIBUSB_ERROR; goto release; }
 
     size_t pagesize = chip->pagesize ? chip->pagesize : EZP2019_READ_SIZE;
+    size_t chunk_buf_size = pagesize > 4096 ? pagesize : 4096;
+    uint8_t *data = malloc(chunk_buf_size);
+    if (!data) { ret = EXP2019_LIBUSB_ERROR; goto release; }
+
     for (size_t offset = 0; offset < size; offset += pagesize)
     {
-        if (abort && *abort) { ret = EXP2019_ABORTED; goto release; }
+        if (abort && *abort) { ret = EXP2019_ABORTED; free(data); goto release; }
         
-        uint8_t data[256] = {0, };
+        memset(data, 0, chunk_buf_size);
         size_t chunk_len = (size - offset < pagesize) ? (size - offset) : pagesize;
         ssize_t n = read(fd, data, chunk_len);
         
@@ -599,9 +615,10 @@ int exp2019_write_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *
         
         int written = 0;
         res = libusb_bulk_transfer(dev, EP_DATA_OUT, data, (int)chunk_len, &written, 5000);
-        if (res) { fprintf(stderr, "libusb_bulk_transfer loop failed at offset %zu with res %d (%s)\n", offset, res, libusb_strerror(res)); ret = EXP2019_LIBUSB_ERROR; goto release; }
+        if (res) { fprintf(stderr, "libusb_bulk_transfer loop failed at offset %zu with res %d (%s)\n", offset, res, libusb_strerror(res)); ret = EXP2019_LIBUSB_ERROR; free(data); goto release; }
         if (callback) callback(offset + written, size, context);
     }
+    free(data);
 
     if (chip->chip_type && strcmp(chip->chip_type, "SPI_FLASH") == 0)
     {
@@ -679,17 +696,23 @@ int exp2019_verify_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void 
     if (res) { ret = EXP2019_LIBUSB_ERROR; goto release; }
 
     size_t pagesize = chip->pagesize ? chip->pagesize : EZP2019_READ_SIZE;
+    size_t chunk_buf_size = pagesize > 4096 ? pagesize : 4096;
+    uint8_t *ic_data = malloc(chunk_buf_size);
+    uint8_t *file_data = malloc(chunk_buf_size);
+    if (!ic_data || !file_data) { free(ic_data); free(file_data); ret = EXP2019_LIBUSB_ERROR; goto release; }
+
     for (size_t offset = 0; offset < size; offset += pagesize)
     {
-        if (abort && *abort) { ret = EXP2019_ABORTED; goto release; }
+        if (abort && *abort) { ret = EXP2019_ABORTED; free(ic_data); free(file_data); goto release; }
         
-        uint8_t ic_data[256] = {0, };
-        uint8_t file_data[256] = {0, };
+        memset(ic_data, 0, chunk_buf_size);
+        memset(file_data, 0, chunk_buf_size);
         int readed = 0;
         size_t chunk = (size - offset < pagesize) ? (size - offset) : pagesize;
+        size_t transfer_size = (chunk < 512) ? 512 : ((chunk + 511) & ~(size_t)511);
         
-        res = libusb_bulk_transfer(dev, EP_IN, ic_data, (int)chunk, &readed, 5000);
-        if (res || readed != (int)chunk) { ret = EXP2019_LIBUSB_ERROR; goto release; }
+        res = libusb_bulk_transfer(dev, EP_IN, ic_data, (int)transfer_size, &readed, 5000);
+        if (res || readed < (int)chunk) { ret = EXP2019_LIBUSB_ERROR; free(ic_data); free(file_data); goto release; }
         
         ssize_t n = read(fd, file_data, chunk);
         if (n < (ssize_t)chunk)
@@ -702,8 +725,10 @@ int exp2019_verify_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void 
             *is_matched = false;
         }
 
-        if (callback) callback(offset + readed, size, context);
+        if (callback) callback(offset + chunk, size, context);
     }
+    free(ic_data);
+    free(file_data);
 
 release:
     exp2019_reset_device(dev);
