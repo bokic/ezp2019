@@ -215,7 +215,7 @@ int ezp2019_is_connected(ezp2019 handle, bool *connected)
 {
     libusb_device_handle *dev = NULL;
 
-    if (handle == NULL)
+    if (handle == NULL || connected == NULL)
     {
         return EZP2019_INVALID_ARGUMENT;
     }
@@ -371,8 +371,8 @@ int ezp2019_reset_ic(ezp2019 handle)
     res = ezp2019_send_command(dev, cmd_packet, tmp);
     if (res)
     {
-        ret = EZP2019_LIBUSB_ERROR;
-        fprintf(stderr, "Error while sending reset command: %s\n", libusb_strerror(res));
+        ret = res;
+        fprintf(stderr, "Error while sending reset command: %s\n", ezp2019_error_string(res));
         goto release;
     }
 
@@ -411,8 +411,8 @@ int ezp2019_read_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void *c
     res = ezp2019_connected_ic(handle, &chip_id);
     if (res)
     {
-        ret = EZP2019_LIBUSB_ERROR;
-        fprintf(stderr, "Error while getting connected IC: %s\n", libusb_strerror(res));
+        ret = res;
+        fprintf(stderr, "Error while getting connected IC: %s\n", ezp2019_error_string(res));
         goto exit;
     }
 
@@ -461,16 +461,16 @@ int ezp2019_read_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void *c
     res = ezp2019_send_command(dev, cmd_packet, tmp);
     if (res)
     {
-        ret = EZP2019_LIBUSB_ERROR;
-        fprintf(stderr, "Error while sending read setup command: %s\n", libusb_strerror(res));
+        ret = res;
+        fprintf(stderr, "Error while sending read setup command: %s\n", ezp2019_error_string(res));
         goto release;
     }
 
     res = ezp2019_trigger_transfer(dev, 0, true);
     if (res)
     {
-        ret = EZP2019_LIBUSB_ERROR;
-        fprintf(stderr, "Error while sending read trigger command: %s\n", libusb_strerror(res));
+        ret = res;
+        fprintf(stderr, "Error while sending read trigger command: %s\n", ezp2019_error_string(res));
         goto release;
     }
 
@@ -546,18 +546,18 @@ int ezp2019_read_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void *c
 release:
     ezp2019_reset_device(dev);
 
-    if (ret == EZP2019_NO_ERROR)
+    res = libusb_release_interface(dev, 0);
+    if (res && ret == EZP2019_NO_ERROR)
     {
-        res = libusb_release_interface(dev, 0);
-        if (res)
-        {
-            ret = EZP2019_LIBUSB_ERROR;
-            fprintf(stderr, "Error while releasing interface: %s\n", libusb_strerror(res));
-        }
+        ret = EZP2019_LIBUSB_ERROR;
+        fprintf(stderr, "Error while releasing interface: %s\n", libusb_strerror(res));
     }
 
 exit:
-    libusb_close(dev);
+    if (dev)
+    {
+        libusb_close(dev);
+    }
     return ret;
 }
 
@@ -573,7 +573,7 @@ int ezp2019_write_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void *
     if (handle == NULL || fd < 0) return EZP2019_INVALID_ARGUMENT;
 
     res = ezp2019_connected_ic(handle, &chip_id);
-    if (res) return EZP2019_LIBUSB_ERROR;
+    if (res) return res;
 
     const Chip *chip = ezp2019_find_ic_by_id(chip_id);
     if (!chip) return EZP2019_COMMAND_ERROR;
@@ -645,18 +645,18 @@ int ezp2019_write_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void *
 release:
     ezp2019_reset_device(dev);
 
-    if (ret == EZP2019_NO_ERROR)
+    res = libusb_release_interface(dev, 0);
+    if (res && ret == EZP2019_NO_ERROR)
     {
-        res = libusb_release_interface(dev, 0);
-        if (res)
-        {
-            ret = EZP2019_LIBUSB_ERROR;
-            fprintf(stderr, "Error while releasing interface: %s\n", libusb_strerror(res));
-        }
+        ret = EZP2019_LIBUSB_ERROR;
+        fprintf(stderr, "Error while releasing interface: %s\n", libusb_strerror(res));
     }
 
 exit:
-    libusb_close(dev);
+    if (dev)
+    {
+        libusb_close(dev);
+    }
     return ret;
 }
 
@@ -673,7 +673,7 @@ int ezp2019_verify_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void 
     *is_matched = true;
 
     res = ezp2019_connected_ic(handle, &chip_id);
-    if (res) return EZP2019_LIBUSB_ERROR;
+    if (res) return res;
 
     const Chip *chip = ezp2019_find_ic_by_id(chip_id);
     if (!chip) return EZP2019_COMMAND_ERROR;
@@ -750,18 +750,18 @@ int ezp2019_verify_ic(ezp2019 handle, int fd, ezp2019_callback_t callback, void 
 release:
     ezp2019_reset_device(dev);
 
-    if (ret == EZP2019_NO_ERROR)
+    res = libusb_release_interface(dev, 0);
+    if (res && ret == EZP2019_NO_ERROR)
     {
-        res = libusb_release_interface(dev, 0);
-        if (res)
-        {
-            ret = EZP2019_LIBUSB_ERROR;
-            fprintf(stderr, "Error while releasing interface: %s\n", libusb_strerror(res));
-        }
+        ret = EZP2019_LIBUSB_ERROR;
+        fprintf(stderr, "Error while releasing interface: %s\n", libusb_strerror(res));
     }
 
 exit:
-    libusb_close(dev);
+    if (dev)
+    {
+        libusb_close(dev);
+    }
     return ret;
 }
 
@@ -777,7 +777,7 @@ int ezp2019_erase_ic(ezp2019 handle, const volatile bool *abort)
     if (handle == NULL) return EZP2019_INVALID_ARGUMENT;
 
     res = ezp2019_connected_ic(handle, &chip_id);
-    if (res) return EZP2019_LIBUSB_ERROR;
+    if (res) return res;
 
     const Chip *chip = ezp2019_find_ic_by_id(chip_id);
     if (!chip) return EZP2019_COMMAND_ERROR;
@@ -823,18 +823,18 @@ int ezp2019_erase_ic(ezp2019 handle, const volatile bool *abort)
 release:
     ezp2019_reset_device(dev);
 
-    if (ret == EZP2019_NO_ERROR)
+    res = libusb_release_interface(dev, 0);
+    if (res && ret == EZP2019_NO_ERROR)
     {
-        res = libusb_release_interface(dev, 0);
-        if (res)
-        {
-            ret = EZP2019_LIBUSB_ERROR;
-            fprintf(stderr, "Error while releasing interface: %s\n", libusb_strerror(res));
-        }
+        ret = EZP2019_LIBUSB_ERROR;
+        fprintf(stderr, "Error while releasing interface: %s\n", libusb_strerror(res));
     }
 
 exit:
-    libusb_close(dev);
+    if (dev)
+    {
+        libusb_close(dev);
+    }
     return ret;
 }
 
