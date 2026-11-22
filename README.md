@@ -4,7 +4,7 @@ Docker image: `docker pull bokic78/ezp2019`
 
 ![EZP2019 USB Programmer](img/ezp2019.jpg)
 
-A Linux-based driver and command-line utility for the **EZP2019 High-Speed USB Programmer**. This project provides an open-source alternative to the proprietary Windows software, allowing users to interact with various memory chips (EEPROM, SPI Flash) directly from the Linux terminal.
+A Linux-based driver and command-line utility for the **EZP2019 / EZP2019+ High-Speed USB Programmer**. This project provides an open-source alternative to the proprietary Windows software, allowing users to interact with various memory chips (EEPROM, SPI Flash) directly from the Linux terminal.
 
 
 ## Features
@@ -157,11 +157,11 @@ sudo docker run -it --privileged ezp2019 sh
 
 ### Chip Database Generator
 
-The project includes a Python script to convert the binary `ezp2019.dat` chip database into a C header file (`ezp2019_chips.h`). This is useful for updating the list of supported devices.
+The project includes a Python script to convert the binary `ezp2019+.dat` chip database into a C header file (`ezp2019_chips.h`). This is useful for updating the list of supported devices.
 
 **Usage:**
 ```bash
-python3 ezp2019_gen_header.py ezp2019.dat -o ezp2019_chips.h
+python3 ezp2019_gen_header.py ezp2019+.dat -o ezp2019_chips.h
 ```
 
 ## License
