@@ -142,7 +142,7 @@ static int exp2019_reset_device(libusb_device_handle *dev)
 }
 
 
-static int exp2019_wait_ready(libusb_device_handle *handle, const Chip *chip, volatile bool *abort)
+static int exp2019_wait_ready(libusb_device_handle *handle, const Chip *chip, const volatile bool *abort)
 {
     uint8_t cmd_packet[EZP2019_PACKET_SIZE] = {0, };
     int res = 0;
@@ -396,7 +396,7 @@ exit:
     return ret;
 }
 
-int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, volatile bool *abort)
+int exp2019_read_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, const volatile bool *abort)
 {
     int ret = EXP2019_NO_ERROR;
     libusb_device_handle *dev = NULL;
@@ -536,7 +536,7 @@ exit:
 }
 
 
-int exp2019_write_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, volatile bool *abort)
+int exp2019_write_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, const volatile bool *abort)
 {
     int ret = EXP2019_NO_ERROR;
     libusb_device_handle *dev = NULL;
@@ -629,7 +629,7 @@ exit:
     return ret;
 }
 
-int exp2019_verify_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, volatile bool *abort, bool *is_matched)
+int exp2019_verify_ic(exp2019 handle, int fd, ezp2019_callback_t callback, void *context, const volatile bool *abort, bool *is_matched)
 {
     int ret = EXP2019_NO_ERROR;
     libusb_device_handle *dev = NULL;
@@ -723,7 +723,7 @@ exit:
     return ret;
 }
 
-int exp2019_erase_ic(exp2019 handle, volatile bool *abort)
+int exp2019_erase_ic(exp2019 handle, const volatile bool *abort)
 {
     int ret = EXP2019_NO_ERROR;
     libusb_device_handle *dev = NULL;
