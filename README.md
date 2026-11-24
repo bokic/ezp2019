@@ -22,6 +22,16 @@ A Linux-based driver and command-line utility for the **EZP2019 / EZP2019+ High-
 
 ## Installation
 
+### Ubuntu (PPA)
+
+`ezp2019` is available via Launchpad PPA (`ppa:bbarbulovski-gmail/ezp2019`):
+
+```bash
+sudo add-apt-repository ppa:bbarbulovski-gmail/ezp2019
+sudo apt update
+sudo apt install ezp2019
+```
+
 ### Arch Linux (AUR)
 
 `ezp2019` is available on the Arch User Repository ([ezp2019](https://aur.archlinux.org/packages/ezp2019)).
