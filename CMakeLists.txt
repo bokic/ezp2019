@@ -1,24 +1,31 @@
 cmake_minimum_required(VERSION 3.15)
 # --- Version Detection ---
-find_package(Git QUIET)
-if(GIT_FOUND)
-    # Get the latest tag
-    execute_process(
-        COMMAND ${GIT_EXECUTABLE} describe --tags --abbrev=0
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        OUTPUT_VARIABLE GIT_TAG
-        ERROR_QUIET
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-    
-    # Get the full version description (with distance and hash)
-    execute_process(
-        COMMAND ${GIT_EXECUTABLE} describe --tags --always --dirty
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        OUTPUT_VARIABLE GIT_VERSION
-        ERROR_QUIET
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
+set(EZP2019_VERSION_TAG "" CACHE STRING "ezp2019 version tag")
+
+if(EZP2019_VERSION_TAG)
+    set(GIT_TAG "${EZP2019_VERSION_TAG}")
+    set(GIT_VERSION "${EZP2019_VERSION_TAG}")
+else()
+    find_package(Git QUIET)
+    if(GIT_FOUND)
+        # Get the latest tag
+        execute_process(
+            COMMAND ${GIT_EXECUTABLE} describe --tags --abbrev=0
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            OUTPUT_VARIABLE GIT_TAG
+            ERROR_QUIET
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        
+        # Get the full version description (with distance and hash)
+        execute_process(
+            COMMAND ${GIT_EXECUTABLE} describe --tags --always --dirty
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            OUTPUT_VARIABLE GIT_VERSION
+            ERROR_QUIET
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+    endif()
 endif()
 
 if(NOT GIT_TAG)
