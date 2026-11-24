@@ -20,6 +20,28 @@ A Linux-based driver and command-line utility for the **EZP2019 / EZP2019+ High-
 - **USB VID**: `0x1fc8`
 - **USB PID**: `0x310b`, `0x310c`
 
+## Installation
+
+### Arch Linux (AUR)
+
+`ezp2019` is available on the Arch User Repository ([ezp2019](https://aur.archlinux.org/packages/ezp2019)).
+
+Using an AUR helper (e.g. `yay` or `paru`):
+```bash
+yay -S ezp2019
+```
+or
+```bash
+paru -S ezp2019
+```
+
+Or build and install manually with `makepkg`:
+```bash
+git clone https://aur.archlinux.org/ezp2019.git
+cd ezp2019
+makepkg -si
+```
+
 ## Dependencies
 
 Ensure the following dependencies are installed on your system:
