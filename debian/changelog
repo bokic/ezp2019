@@ -1,0 +1,5 @@
+ezp2019 (1.0.4-1~noble1) noble; urgency=medium
+
+  * Initial Ubuntu PPA packaging for EZP2019 1.0.4.
+
+ -- Boris Barbulovski <bbarbulovski@gmail.com>  Tue, 24 Nov 2026 23:30:00 +0100
