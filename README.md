@@ -1,4 +1,4 @@
-# EZP2019 USB Programmer Utility [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/bokic/ezp2019) [![Docker Pulls](https://img.shields.io/docker/pulls/bokic78/ezp2019)](https://hub.docker.com/repository/docker/bokic78/ezp2019)
+# EZP2019 USB Programmer Utility [![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue)](https://deepwiki.com/bokic/ezp2019) [![Docker Pulls](https://img.shields.io/docker/pulls/bokic78/ezp2019)](https://hub.docker.com/repository/docker/bokic78/ezp2019)
 
 Docker image: `docker pull bokic78/ezp2019`
 
